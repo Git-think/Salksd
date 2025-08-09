@@ -106,7 +106,7 @@ export HY2_PORT=$udp_port2
 }
 
 check_website() {
-FULL_DOMAIN="${USERNAME}.${CURRENT_DOMAIN}"
+FULL_DOMAIN="api.${USERNAME}.${CURRENT_DOMAIN}"
 CURRENT_SITE=$(devil www list | awk -v domain="$FULL_DOMAIN" '$1 == domain && $2 == "php"')
 if [ -n "$CURRENT_SITE" ]; then
     green "已存在 ${FULL_DOMAIN} 的PHP站点，无需修改"
