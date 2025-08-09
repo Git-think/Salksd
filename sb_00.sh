@@ -27,8 +27,8 @@ elif [[ "$HOSTNAME" =~ useruno ]]; then
 else
     CURRENT_DOMAIN="serv00.net"
 fi
-WORKDIR="${HOME}/domains/${USERNAME}.${CURRENT_DOMAIN}/logs"
-FILE_PATH="${HOME}/domains/${USERNAME}.${CURRENT_DOMAIN}/public_html"
+WORKDIR="${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/logs"
+FILE_PATH="${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/public_html"
 rm -rf "$WORKDIR" && mkdir -p "$WORKDIR" "$FILE_PATH" && chmod 777 "$WORKDIR" "$FILE_PATH" >/dev/null 2>&1
 command -v curl &>/dev/null && COMMAND="curl -so" || command -v wget &>/dev/null && COMMAND="wget -qO" || { red "Error: neither curl nor wget found, please install one of them." >&2; exit 1; }
 
@@ -217,7 +217,7 @@ uninstall_singbox() {
 	          bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
        	    rm -rf $WORKDIR && find ${FILE_PATH} -mindepth 1 ! -name 'index.html' -exec rm -rf {} +
             devil www del keep.${USERNAME}.${CURRENT_DOMAIN} nodejs 2>/dev/null || true
-            rm -rf ${HOME}/domains/${USERNAME}.${CURRENT_DOMAIN}/public_nodejs 2 >/dev/null || true
+            rm -rf ${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/public_nodejs 2 >/dev/null || true
             rm -rf "${HOME}/bin/00" >/dev/null 2>&1
             [ -d "${HOME}/bin" ] && [ -z "$(ls -A "${HOME}/bin")" ] && rmdir "${HOME}/bin"
             sed -i '/export PATH="\$HOME\/bin:\$PATH"/d' "${HOME}/.bashrc" >/dev/null 2>&1
@@ -588,8 +588,8 @@ PHP_URL="https://00.ssss.nyc.mn/sub.php"
 QR_URL="https://00.ssss.nyc.mn/qrencode"  
 $COMMAND "${FILE_PATH}/${SUB_TOKEN}.php" "$PHP_URL" 
 $COMMAND "${WORKDIR}/qrencode" "$QR_URL" && chmod +x "${WORKDIR}/qrencode"
-V2rayN_LINK="https://${USERNAME}.${CURRENT_DOMAIN}/v2.log"
-AUTO_LINK="https://${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
+V2rayN_LINK="https://api.${USERNAME}.${CURRENT_DOMAIN}/v2.log"
+AUTO_LINK="https://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
 curl -sS "https://sublink.eooce.com/clash?config=${V2rayN_LINK}" -o ${FILE_PATH}/clash.yaml
 curl -sS "https://sublink.eooce.com/singbox?config=${V2rayN_LINK}" -o ${FILE_PATH}/singbox.yaml
 "${WORKDIR}/qrencode" -m 2 -t UTF8 "${AUTO_LINK}"
@@ -634,6 +634,7 @@ ${NEZHA_PORT:+NEZHA_PORT=$NEZHA_PORT}
 ${NEZHA_KEY:+NEZHA_KEY=$NEZHA_KEY}
 EOF
     # devil ssl www add $available_ip le le keep.${USERNAME}.${CURRENT_DOMAIN} > /dev/null 2>&1
+	devil ssl www add $available_ip le le api.${USERNAME}.${CURRENT_DOMAIN} > /dev/null 2>&1
     ln -fs /usr/local/bin/node18 ~/bin/node > /dev/null 2>&1
     ln -fs /usr/local/bin/npm18 ~/bin/npm > /dev/null 2>&1
     mkdir -p ~/.npm-global
@@ -708,8 +709,8 @@ get_nodes(){
 cat ${FILE_PATH}/list.txt
 TOKEN=$(sed -n 's/^SUB_TOKEN=\(.*\)/\1/p' $HOME/domains/keep.${USERNAME}.${CURRENT_DOMAIN}/public_nodejs/.env)
 echo ""
-"${WORKDIR}/qrencode" -m 2 -t UTF8 "https://${USERNAME}.${CURRENT_DOMAIN}/${TOKEN}"
-yellow "\n自适应节点订阅链接: https://${USERNAME}.serv00.net/${TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
+"${WORKDIR}/qrencode" -m 2 -t UTF8 "https://api.${USERNAME}.${CURRENT_DOMAIN}/${TOKEN}"
+yellow "\n自适应节点订阅链接: https://api.${USERNAME}.serv00.net/${TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
 }
 
 menu() {
