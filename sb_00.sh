@@ -716,7 +716,7 @@ yellow "\n自适应节点订阅链接: https://api.${USERNAME}.serv00.net/${TOKE
 menu() {
   clear
   echo ""
-  purple "=== Serv00|ct8老王sing-box一键三协议安装脚本法克版 ===\n"
+  purple "=== Serv00|ct8老王sing-box一键三协议安装脚本法克笔 ===\n"
   echo -e "${green}脚本地址：${re}${yellow}https://github.com/eooce/Sing-box${re}\n"
   echo -e "${green}反馈论坛：${re}${yellow}https://bbs.vps8.me${re}\n"
   echo -e "${green}TG反馈群组：${re}${yellow}https://t.me/vps888${re}\n"
