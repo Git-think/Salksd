@@ -683,7 +683,7 @@ quick_command() {
   SCRIPT_PATH="$HOME/bin/$COMMAND"
   mkdir -p "$HOME/bin"
   echo "#!/bin/bash" > "$SCRIPT_PATH"
-  echo "bash <(curl -Ls https://raw.githubusercontent.com/eooce/sing-box/test/sb_00.sh)" >> "$SCRIPT_PATH"
+  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Sing-box/refs/heads/main/sb_00.sh)" >> "$SCRIPT_PATH"
   chmod +x "$SCRIPT_PATH"
   if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
       echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
