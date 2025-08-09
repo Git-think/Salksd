@@ -709,14 +709,14 @@ get_nodes(){
 cat ${FILE_PATH}/list.txt
 TOKEN=$(sed -n 's/^SUB_TOKEN=\(.*\)/\1/p' $HOME/domains/keep.${USERNAME}.${CURRENT_DOMAIN}/public_nodejs/.env)
 echo ""
-"${WORKDIR}/qrencode" -m 2 -t UTF8 "https://api.${USERNAME}.${CURRENT_DOMAIN}/${TOKEN}"
-yellow "\n自适应节点订阅链接: https://api.${USERNAME}.serv00.net/${TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
+"${WORKDIR}/qrencode" -m 2 -t UTF8 "http://api.${USERNAME}.${CURRENT_DOMAIN}/${TOKEN}"
+yellow "\n自适应节点订阅链接: http://api.${USERNAME}.serv00.net/${TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
 }
 
 menu() {
   clear
   echo ""
-  purple "=== Serv00|ct8老王sing-box一键三协议安装脚本法克笔 ===\n"
+  purple "=== Serv00|ct8 sing-box一键三协议安装脚本法克笔 ===\n"
   echo -e "${green}脚本地址：${re}${yellow}https://github.com/eooce/Sing-box${re}\n"
   echo -e "${green}反馈论坛：${re}${yellow}https://bbs.vps8.me${re}\n"
   echo -e "${green}TG反馈群组：${re}${yellow}https://t.me/vps888${re}\n"
