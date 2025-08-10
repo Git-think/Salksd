@@ -191,7 +191,7 @@ read_variables() {
   fi
 }
 
-install_singbox() {
+install_frps() {
 bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
 echo -e "${yellow}本脚本同时三协议共存${purple}(vless-reality,hysteria2,tuic)${re}"
 reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " choice
@@ -202,7 +202,7 @@ reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " cho
         check_port
         check_website
         read_variables
-        download_singbox
+        download_frps
         get_links
       ;;
     [Nn]) exit 0 ;;
@@ -210,20 +210,21 @@ reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " cho
   esac
 }
 
-uninstall_singbox() {
+uninstall_frps() {
   reading "\n确定要卸载吗？【y/n】: " choice
     case "$choice" in
         [Yy])
 	          bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
        	    rm -rf $WORKDIR && find ${FILE_PATH} -mindepth 1 ! -name 'index.html' -exec rm -rf {} +
-            devil www del keep.${USERNAME}.${CURRENT_DOMAIN} nodejs 2>/dev/null || true
-            rm -rf ${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/public_nodejs 2 >/dev/null || true
-            rm -rf "${HOME}/bin/00" >/dev/null 2>&1
-            [ -d "${HOME}/bin" ] && [ -z "$(ls -A "${HOME}/bin")" ] && rmdir "${HOME}/bin"
-            sed -i '/export PATH="\$HOME\/bin:\$PATH"/d' "${HOME}/.bashrc" >/dev/null 2>&1
+       	    pkill -f "frps_start.sh" >/dev/null 2>&1
+       	    devil www del api.${USERNAME}.${CURRENT_DOMAIN} >/dev/null 2>&1
+       	    rm -rf ${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN} >/dev/null 2>&1
+       	    rm -rf "${HOME}/bin/00" >/dev/null 2>&1
+       	    [ -d "${HOME}/bin" ] && [ -z "$(ls -A "${HOME}/bin")" ] && rmdir "${HOME}/bin"
+       	    sed -i '/export PATH="\$HOME\/bin:\$PATH"/d' "${HOME}/.bashrc" >/dev/null 2>&1
             source "${HOME}/.bashrc"
 	          clear
-       	    green "Sing-box三合一已完全卸载"
+       	    green "frps三合一已完全卸载"
           ;;
         [Nn]) exit 0 ;;
     	  *) red "无效的选择，请输入y或n" && menu ;;
@@ -236,16 +237,16 @@ reading "\n确定重置系统吗吗？【y/n】: " choice
     [Yy]) yellow "\n初始化系统中,请稍后...\n"
           bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
           find "${HOME}" -mindepth 1 ! -name "domains" ! -name "mail" ! -name "repo" ! -name "backups" ! -name ".*" -exec rm -rf {} + > /dev/null 2>&1
+          pkill -f "frps_start.sh" >/dev/null 2>&1
           devil www del api.${USERNAME}.${CURRENT_DOMAIN} > /dev/null 2>&1
-          devil www del keep.$USERNAME.${CURRENT_DOMAIN} > /dev/null 2>&1
-          rm -rf $HOME/domains/* > /dev/null 2>&1
+          rm -rf $HOME/domains/api.${USERNAME}.${CURRENT_DOMAIN} > /dev/null 2>&1
           green "\n系统初始化完成!\n"
          ;;
        *) menu ;;
   esac
 }
 
-download_singbox() {
+download_frps() {
 ARCH=$(uname -m) && DOWNLOAD_DIR="." && mkdir -p "$DOWNLOAD_DIR" && FILE_INFO=()
 if [ "$ARCH" == "arm" ] || [ "$ARCH" == "arm64" ] || [ "$ARCH" == "aarch64" ]; then
     BASE_URL="https://github.com/eooce/test/releases/download/freebsd-arm64"
@@ -323,7 +324,7 @@ for entry in "${FILE_INFO[@]}"; do
     # 根据代号KEY来决定文件名
     case "$KEY" in
         web)
-            # sing-box 主程序
+            # frps 主程序
             NEW_FILENAME="$DOWNLOAD_DIR/frps"
             ;;
         npm|php)
@@ -354,7 +355,7 @@ private_key=$(echo "${output}" | awk '/PrivateKey:/ {print $2}')
 public_key=$(echo "${output}" | awk '/PublicKey:/ {print $2}')
 [[ "$PROXYIP" == "true" ]] && SNI="time.is" || SNI="www.cerebrium.ai"
 openssl ecparam -genkey -name prime256v1 -out "private.key"
-openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=api.${USERNAME}.${CURRENT_DOMAIN}"
+openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=api.$USERNAME.${CURRENT_DOMAIN}"
   
 yellow "获取可用IP中,请稍等..."
 available_ip=$(get_ip)
@@ -474,7 +475,7 @@ if [[ "$HOSTNAME" =~ s14|s15 ]]; then
       ],
       "private_key": "wIxszdR2nMdA7a2Ul3XQcniSfSZqdqjPb6w6opvf5AU=",
       "peer_public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
-      "reserved":
+      "reserved": [126, 246, 173]
     }
   ],
   "route": {
@@ -564,17 +565,17 @@ get_ip() {
   IP_LIST=($(devil vhost list | awk '/^[0-9]+/ {print $1}'))
   API_URL="https://status.eooce.com/api"
   IP=""
-  THIRD_IP=${IP_LIST}
+  THIRD_IP=${IP_LIST[2]}
   RESPONSE=$(curl -s --max-time 2 "${API_URL}/${THIRD_IP}")
   if [[ $(echo "$RESPONSE" | jq -r '.status') == "Available" ]]; then
       IP=$THIRD_IP
   else
-      FIRST_IP=${IP_LIST}
+      FIRST_IP=${IP_LIST[0]}
       RESPONSE=$(curl -s --max-time 2 "${API_URL}/${FIRST_IP}")
       if [[ $(echo "$RESPONSE" | jq -r '.status') == "Available" ]]; then
           IP=$FIRST_IP
       else
-          IP=${IP_LIST}
+          IP=${IP_LIST[1]}
       fi
   fi
 echo "$IP"
@@ -613,173 +614,47 @@ EOF
 }
 
 install_keepalive () {
-    [[ "$HOSTNAME" =~ ct8|useruno ]] && return
     purple "正在安装保活服务中,请稍等......"
-    devil www del keep.${USERNAME}.${CURRENT_DOMAIN} > /dev/null 2>&1
-    devil www add keep.${USERNAME}.${CURRENT_DOMAIN} nodejs /usr/local/bin/node18 > /dev/null 2>&1
-    keep_path="$HOME/domains/keep.${USERNAME}.serv00.net/public_nodejs"
-    [ -d "$keep_path" ] || mkdir -p "$keep_path"
+    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps_start.sh"
+    KEEPALIVE_SCRIPT_PATH="${WORKDIR}/frps_start.sh"
 
-    # 直接写入新的 app.js
-    cat > "${keep_path}/app.js" <<'EOF'
-const http = require('http');
-const { exec } = require('child_process');
-const dotenv = require('dotenv');
-const path = require('path');
+    # Download the keep-alive script
+    $COMMAND "$KEEPALIVE_SCRIPT_PATH" "$KEEPALIVE_SCRIPT_URL"
+    if [ $? -ne 0 ]; then
+        red "下载保活脚本失败。"
+        exit 1
+    fi
 
-// 加载.env文件
-dotenv.config({ path: path.join(__dirname, '.env') });
+    chmod +x "$KEEPALIVE_SCRIPT_PATH"
 
-const PORT = process.env.PORT || 3000;
-const USERNAME = process.env.USER || 'user';
-const WORKDIR = path.join(process.env.HOME, 'domains', `api.${USERNAME}.${process.env.CURRENT_DOMAIN}`, 'logs');
+    # Modify the keep-alive script to use a more reliable process check
+    sed -i 's|! pgrep -x "frps"|! pgrep -f "$FRPS_EXEC"|' "$KEEPALIVE_SCRIPT_PATH"
 
-// 进程信息
-const SINGBOX_PROCESS_NAME = "frps";
-const AGENT_PROCESS_NAME = "frps-agent";
+    # Kill any existing keep-alive script process
+    pkill -f "frps_start.sh" >/dev/null 2>&1
 
-// 哪吒环境变量
-const { NEZHA_SERVER, NEZHA_PORT, NEZHA_KEY } = process.env;
-
-// 日志记录
-const log = (message) => {
-    console.log(`[${new Date().toISOString()}] ${message}`);
-};
-
-// 执行shell命令
-const runCommand = (command) => {
-    return new Promise((resolve, reject) => {
-        exec(command, { cwd: WORKDIR }, (error, stdout, stderr) => {
-            if (error) {
-                log(`Error executing command: ${command}`);
-                log(`Stderr: ${stderr}`);
-                reject(error);
-                return;
-            }
-            resolve(stdout.trim());
-        });
-    });
-};
-
-// 检查并重启服务
-const checkAndRestartServices = async () => {
-    log('开始检查服务状态...');
-
-    // 1. 检查 Sing-box
-    try {
-        await runCommand(`pgrep -x ${SINGBOX_PROCESS_NAME}`);
-        log('Sing-box 正在运行.');
-    } catch (error) {
-        log('Sing-box 未运行, 正在重启...');
-        try {
-            await runCommand(`pkill -9 -x ${SINGBOX_PROCESS_NAME}`);
-        } catch (e) { /* ignore error if process not found */ }
-        
-        await runCommand(`nohup ./${SINGBOX_PROCESS_NAME} run -c config.json >/dev/null 2>&1 &`);
-        log('Sing-box 重启命令已发送.');
-    }
-
-    // 2. 检查哪吒探针
-    if (NEZHA_SERVER && NEZHA_KEY) {
-        try {
-            if (NEZHA_PORT) {
-                await runCommand(`pgrep -f "${AGENT_PROCESS_NAME}.*-s.*${NEZHA_SERVER}"`);
-            } else {
-                await runCommand(`pgrep -f "${AGENT_PROCESS_NAME}.*-c.*config.yaml"`);
-            }
-            log('哪吒探针正在运行.');
-        } catch (error) {
-            log('哪吒探针未运行, 正在重启...');
-            try {
-                await runCommand(`pkill -9 -f ${AGENT_PROCESS_NAME}`);
-            } catch (e) { /* ignore error */ }
-
-            let restartCmd = '';
-            if (NEZHA_PORT) {
-                const tlsPorts = ["443", "8443", "2096", "2087", "2083", "2053"];
-                const nezhaTls = tlsPorts.includes(NEZHA_PORT) ? '--tls' : '';
-                restartCmd = `TMPDIR=${WORKDIR} nohup ./${AGENT_PROCESS_NAME} -s ${NEZHA_SERVER}:${NEZHA_PORT} -p ${NEZHA_KEY} ${nezhaTls} >/dev/null 2>&1 &`;
-            } else {
-                restartCmd = `nohup ./${AGENT_PROCESS_NAME} -c ${path.join(WORKDIR, 'config.yaml')} >/dev/null 2>&1 &`;
-            }
-            await runCommand(restartCmd);
-            log('哪吒探针重启命令已发送.');
-        }
-    }
-    log('服务状态检查完成.');
-};
-
-// 创建HTTP服务器用于手动触发和状态检查
-const server = http.createServer(async (req, res) => {
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    log(`收到请求: ${req.url}`);
-
-    if (req.url.startsWith(`/${USERNAME}`) || req.url === '/run' || req.url === '/start' || req.url === '/go') {
-        res.writeHead(200);
-        res.end('保活任务已手动触发,请稍后查看状态。\n');
-        await checkAndRestartServices();
-    } else if (req.url === '/status') {
-        try {
-            const processList = await runCommand(`ps aux | grep ${USERNAME} | grep -v "sshd\\|bash\\|grep"`);
-            res.writeHead(200);
-            res.end(`所有服务都运行正常,进程列表:\n\n${processList}\n`);
-        } catch (e) {
-            res.writeHead(500);
-            res.end('获取进程列表失败。\n');
-        }
-    } else {
-        res.writeHead(404);
-        res.end('路径未找到。\n');
-    }
-});
-
-server.listen(PORT, () => {
-    log(`服务器运行在端口 ${PORT}`);
-    log('保活服务已启动,将每5分钟自动检查一次。');
+    # Start the new keep-alive script in the background
+    setsid nohup "$KEEPALIVE_SCRIPT_PATH" "$WORKDIR" >"${WORKDIR}/keepalive.log" 2>&1 &
     
-    // 立即执行一次检查
-    checkAndRestartServices();
-    
-    // 设置定时器
-    setInterval(checkAndRestartServices, 5 * 60 * 1000); // 5分钟
-});
-EOF
-
-    cat > ${keep_path}/.env <<EOF
-UUID=${UUID}
-SUB_TOKEN=${SUB_TOKEN}
-PROXYIP=${PROXYIP}
-USER=${USERNAME}
-HOME=${HOME}
-CURRENT_DOMAIN=${CURRENT_DOMAIN}
-${UPLOAD_URL:+API_SUB_URL=$UPLOAD_URL}
-${tg_chat_id:+TELEGRAM_CHAT_ID=$tg_chat_id}
-${tg_token:+TELEGRAM_BOT_TOKEN=$tg_token}
-${NEZHA_SERVER:+NEZHA_SERVER=$NEZHA_SERVER}
-${NEZHA_PORT:+NEZHA_PORT=$NEZHA_PORT}
-${NEZHA_KEY:+NEZHA_KEY=$NEZHA_KEY}
-EOF
-	devil ssl www add $available_ip le le api.${USERNAME}.${CURRENT_DOMAIN} > /dev/null 2>&1
-    ln -fs /usr/local/bin/node18 ~/bin/node > /dev/null 2>&1
-    ln -fs /usr/local/bin/npm18 ~/bin/npm > /dev/null 2>&1
-    mkdir -p ~/.npm-global
-    npm config set prefix '~/.npm-global'
-    echo 'export PATH=~/.npm-global/bin:~/bin:$PATH' >> $HOME/.bash_profile && source $HOME/.bash_profile
-    rm -rf $HOME/.npmrc > /dev/null 2>&1
-    cd ${keep_path} && npm install dotenv --silent > /dev/null 2>&1
-    rm $HOME/domains/keep.${USERNAME}.${CURRENT_DOMAIN}/public_nodejs/public/index.html > /dev/null 2>&1
-    devil www restart keep.${USERNAME}.${CURRENT_DOMAIN} > /dev/null 2>&1
-    
-    sleep 5 # 等待nodejs服务启动
-
-    if curl -skL "http://127.0.0.1:$(devil port list | grep "nodejs" | awk '{print $1}')/status" | grep -q "frps"; then
+    sleep 2
+    if pgrep -f "frps_start.sh" > /dev/null; then
         green "\n全自动保活服务安装成功\n"
-	    green "所有服务都运行正常,内置定时器将每5分钟检查一次。\n\n"
-        purple "访问 http://keep.${USERNAME}.${CURRENT_DOMAIN}/status 查看进程状态\n"
-        yellow "访问 http://keep.${USERNAME}.${CURRENT_DOMAIN}/${USERNAME} 可手动触发检查 (备用: /run, /start)\n"
+        
+        # Create a shortcut command for frps_start.sh
+        local keepalive_command="frps-start"
+        local keepalive_path="$HOME/bin/$keepalive_command"
+        mkdir -p "$HOME/bin"
+        echo "#!/bin/bash" > "$keepalive_path"
+        echo "bash <(curl -Ls $KEEPALIVE_SCRIPT_URL)" >> "$keepalive_path"
+        chmod +x "$keepalive_path"
+
+        if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
+            echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
+            source "$HOME/.bashrc"
+        fi
+        green "快捷指令 ${keepalive_command} 创建成功, 下次可直接运行 ${keepalive_command} 来启动保活服务。\n"
     else
-        red "\n全自动保活服务安装失败,请检查日志。\n"
-        purple "你可以通过 devil www log keep.${USERNAME}.${CURRENT_DOMAIN} 查看nodejs日志。\n"
+        red "\n全自动保活服务安装失败\n"
     fi
 }
 
@@ -809,7 +684,7 @@ quick_command() {
   SCRIPT_PATH="$HOME/bin/$COMMAND"
   mkdir -p "$HOME/bin"
   echo "#!/bin/bash" > "$SCRIPT_PATH"
-  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Sing-box/refs/heads/main/sb_00.sh)" >> "$SCRIPT_PATH"
+  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/sb_01.sh)" >> "$SCRIPT_PATH"
   chmod +x "$SCRIPT_PATH"
   if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
       echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
@@ -819,32 +694,25 @@ green "快捷指令00创建成功,下次运行输入00快速进入菜单\n"
 }
 
 get_url_info() {
-  if devil www list 2>&1 | grep -q "keep.${USERNAME}.${CURRENT_DOMAIN}"; then
-    purple "\n-------------------保活相关链接------------------\n\n"
-    purple "http://keep.${USERNAME}.${CURRENT_DOMAIN}/stop 结束进程\n"
-    purple "http://keep.${USERNAME}.${CURRENT_DOMAIN}/list 全部进程列表\n"
-    yellow "http://keep.${USERNAME}.${CURRENT_DOMAIN}/${USERNAME} 调起保活程序  备用保活路径: /run  /go  /start\n"
-    purple "http://keep.${USERNAME}.${CURRENT_DOMAIN}/status 查看进程状态\n\n"
-  else 
-    red "尚未安装自动保活服务\n" && sleep 2 && menu
+  if pgrep -f "frps_start.sh" > /dev/null; then
+    green "保活服务正在运行中。"
+    purple "保活日志文件位于: ${WORKDIR}/keepalive.log"
+  else
+    red "尚未安装或运行自动保活服务\n" && sleep 2 && menu
   fi
 }
 
 get_nodes(){
 cat ${FILE_PATH}/list.txt
-TOKEN=$(sed -n 's/^SUB_TOKEN=\(.*\)/\1/p' $HOME/domains/keep.${USERNAME}.${CURRENT_DOMAIN}/public_nodejs/.env)
 echo ""
-"${WORKDIR}/qrencode" -m 2 -t UTF8 "http://api.${USERNAME}.${CURRENT_DOMAIN}/${TOKEN}"
-yellow "\n自适应节点订阅链接: http://api.${USERNAME}.serv00.net/${TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
+"${WORKDIR}/qrencode" -m 2 -t UTF8 "https://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
+yellow "\n自适应节点订阅链接: https://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
 }
 
 menu() {
   clear
   echo ""
-  purple "=== Serv00|ct8 sing-box一键三协议安装阿萨DSAD脚本 ===\n"
-  echo -e "${green}脚本地址：${re}${yellow}https://github.com/eooce/Sing-box${re}\n"
-  echo -e "${green}反馈论坛：${re}${yellow}https://bbs.vps8.me${re}\n"
-  echo -e "${green}TG反馈群组：${re}${yellow}https://t.me/vps888${re}\n"
+  purple "=== Serv00|ct8 frps一键三协议安装脚本法 ===\n"
   purple "转载请著名出处，请勿滥用\n"
   yellow "快速启动命令00\n"
   green "1. 安装三合一"
@@ -864,8 +732,8 @@ menu() {
   reading "请输入选择(0-6): " choice
   echo ""
   case "${choice}" in
-      1) install_singbox ;;
-      2) uninstall_singbox ;; 
+      1) install_frps ;;
+      2) uninstall_frps ;; 
       3) get_nodes ;; 
       4) get_url_info ;;
       5) changge_ports ;;
