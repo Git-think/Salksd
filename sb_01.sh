@@ -191,7 +191,7 @@ read_variables() {
   fi
 }
 
-install_singbox() {
+install_frps() {
 bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
 echo -e "${yellow}本脚本同时三协议共存${purple}(vless-reality,hysteria2,tuic)${re}"
 reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " choice
@@ -202,7 +202,7 @@ reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " cho
         check_port
         check_website
         read_variables
-        download_singbox
+        download_frps
         get_links
       ;;
     [Nn]) exit 0 ;;
@@ -210,7 +210,7 @@ reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " cho
   esac
 }
 
-uninstall_singbox() {
+uninstall_frps() {
   reading "\n确定要卸载吗？【y/n】: " choice
     case "$choice" in
         [Yy])
@@ -224,7 +224,7 @@ uninstall_singbox() {
        	    sed -i '/export PATH="\$HOME\/bin:\$PATH"/d' "${HOME}/.bashrc" >/dev/null 2>&1
             source "${HOME}/.bashrc"
 	          clear
-       	    green "Sing-box三合一已完全卸载"
+       	    green "frps三合一已完全卸载"
           ;;
         [Nn]) exit 0 ;;
     	  *) red "无效的选择，请输入y或n" && menu ;;
@@ -246,7 +246,7 @@ reading "\n确定重置系统吗吗？【y/n】: " choice
   esac
 }
 
-download_singbox() {
+download_frps() {
 ARCH=$(uname -m) && DOWNLOAD_DIR="." && mkdir -p "$DOWNLOAD_DIR" && FILE_INFO=()
 if [ "$ARCH" == "arm" ] || [ "$ARCH" == "arm64" ] || [ "$ARCH" == "aarch64" ]; then
     BASE_URL="https://github.com/eooce/test/releases/download/freebsd-arm64"
@@ -324,7 +324,7 @@ for entry in "${FILE_INFO[@]}"; do
     # 根据代号KEY来决定文件名
     case "$KEY" in
         web)
-            # sing-box 主程序
+            # frps 主程序
             NEW_FILENAME="$DOWNLOAD_DIR/frps"
             ;;
         npm|php)
@@ -649,6 +649,13 @@ install_keepalive () {
             echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
             source "$HOME/.bashrc"
         fi
+
+        if [ -f "$HOME/.bash_profile" ]; then
+            if ! grep -q 'source ~/.bashrc' "$HOME/.bash_profile"; then
+                echo -e "\n# Load .bashrc\nif [ -f ~/.bashrc ]; then\n    source ~/.bashrc\nfi" >> "$HOME/.bash_profile"
+            fi
+        fi
+
         green "快捷指令 ${frps_command_name} 创建成功, 下次可直接运行 ${frps_command_name} 来启动保活服务。\n"
     else
         red "\n全自动保活服务安装失败\n"
@@ -681,7 +688,7 @@ quick_command() {
   SCRIPT_PATH="$HOME/bin/$COMMAND"
   mkdir -p "$HOME/bin"
   echo "#!/bin/bash" > "$SCRIPT_PATH"
-  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Sing-box/refs/heads/main/sb_00.sh)" >> "$SCRIPT_PATH"
+  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/sb_00.sh)" >> "$SCRIPT_PATH"
   chmod +x "$SCRIPT_PATH"
   if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
       echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
@@ -709,7 +716,7 @@ yellow "\n自适应节点订阅链接: https://api.${USERNAME}.${CURRENT_DOMAIN}
 menu() {
   clear
   echo ""
-  purple "=== 脚 ===\n"
+  purple "=== Serv00|ct8 frps一键三协议安装脚本法 ===\n"
   purple "转载请著名出处，请勿滥用\n"
   yellow "快速启动命令00\n"
   green "1. 安装三合一"
@@ -729,8 +736,8 @@ menu() {
   reading "请输入选择(0-6): " choice
   echo ""
   case "${choice}" in
-      1) install_singbox ;;
-      2) uninstall_singbox ;; 
+      1) install_frps ;;
+      2) uninstall_frps ;; 
       3) get_nodes ;; 
       4) get_url_info ;;
       5) changge_ports ;;
