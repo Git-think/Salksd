@@ -638,25 +638,18 @@ install_keepalive () {
         green "\n全自动保活服务安装成功\n"
         
         # Create a shortcut command for frps_start.sh
-        local frps_command_name="frps-start"
-        local frps_script_path="$HOME/bin/$frps_command_name"
+        local keepalive_command="frps-start"
+        local keepalive_path="$HOME/bin/$keepalive_command"
         mkdir -p "$HOME/bin"
-        echo "#!/bin/bash" > "$frps_script_path"
-        echo "\"$KEEPALIVE_SCRIPT_PATH\"" >> "$frps_script_path"
-        chmod +x "$frps_script_path"
-        
+        echo "#!/bin/bash" > "$keepalive_path"
+        echo "bash <(curl -Ls $KEEPALIVE_SCRIPT_URL)" >> "$keepalive_path"
+        chmod +x "$keepalive_path"
+
         if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
             echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
             source "$HOME/.bashrc"
         fi
-
-        if [ -f "$HOME/.bash_profile" ]; then
-            if ! grep -q 'source ~/.bashrc' "$HOME/.bash_profile"; then
-                echo -e "\n# Load .bashrc\nif [ -f ~/.bashrc ]; then\n    source ~/.bashrc\nfi" >> "$HOME/.bash_profile"
-            fi
-        fi
-
-        green "快捷指令 ${frps_command_name} 创建成功, 下次可直接运行 ${frps_command_name} 来启动保活服务。\n"
+        green "快捷指令 ${keepalive_command} 创建成功, 下次可直接运行 ${keepalive_command} 来启动保活服务。\n"
     else
         red "\n全自动保活服务安装失败\n"
     fi
