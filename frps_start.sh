@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # This script is designed to keep the frps process running.
-# It checks every 5 minutes if the process is active, and if not, restarts it.
+# It can be run manually from its directory.
 
-# The working directory should be passed as the first argument.
-WORKDIR_PATH="$1"
+# Determine the script's own directory to use as the working directory.
+WORKDIR_PATH=$(cd "$(dirname "$0")" && pwd)
+
 if [ -z "$WORKDIR_PATH" ]; then
-  echo "Error: Working directory not provided."
-  echo "Usage: $0 <workdir_path>"
+  echo "Error: Could not determine working directory."
   exit 1
 fi
 
