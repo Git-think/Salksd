@@ -184,15 +184,24 @@ while true; do
       fi
   fi
 
-  # 3. Check for config file
-  if [ ! -f "$CONFIG_FILE" ]; then
-      generate_config_file
-  fi
+  # 3. Check if the process is running
+  if ! pgrep -f "$FRPS_EXEC run" > /dev/null; then
+    log_message "frps process not found. Preparing to restart..."
+    
+    # 3a. Generate the config file, as it's needed for restart
+    generate_config_file
 
-  # 4. Check if the process is running
-  if ! pgrep -f "frps run -c $CONFIG_FILE" > /dev/null; then
-    log_message "frps process not found. Restarting..."
+    # 3b. Start the process
     nohup "$FRPS_EXEC" run -c "$CONFIG_FILE" >/dev/null 2>&1 &
+    sleep 2 # Wait a moment for the process to start
+
+    # 3c. Verify and clean up
+    if pgrep -f "$FRPS_EXEC run" > /dev/null; then
+        log_message "frps process restarted successfully. Cleaning up temporary files."
+        rm -rf "$CONFIG_FILE" private.key cert.pem sb.log core fake_useragent_0.2.0.json
+    else
+        log_message "Error: frps process failed to start after attempt."
+    fi
   else
     log_message "frps process is running."
   fi
