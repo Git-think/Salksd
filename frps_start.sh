@@ -11,7 +11,7 @@ if [ -z "$WORKDIR_PATH" ]; then
   exit 1
 fi
 
-# The main executable for sing-box
+# The main executable for frps
 FRPS_EXEC="$WORKDIR_PATH/frps"
 # The configuration file
 CONFIG_FILE="$WORKDIR_PATH/config.json"
@@ -27,7 +27,7 @@ if [ "$1" != "--background" ]; then
   if [ -f "$PID_FILE" ]; then
     # If the process in the PID file is still running, exit.
     if ps -p $(cat "$PID_FILE") > /dev/null; then
-      echo "Keep-alive script is already running."
+      echo "frps 保活服务已经在运行中。"
       exit 0
     fi
   fi
@@ -35,7 +35,7 @@ if [ "$1" != "--background" ]; then
   # Start a new instance of this script in the background with a special argument
   # setsid is used to detach it completely from the current terminal
   setsid nohup "$0" --background >/dev/null 2>&1 &
-  echo "Keep-alive script started in the background."
+  echo "frps 保活服务已启动到后台。"
   exit 0
 fi
 
