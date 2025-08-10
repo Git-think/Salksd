@@ -615,6 +615,18 @@ EOF
 
 install_keepalive () {
     purple "正在安装保活服务中,请稍等......"
+    
+    # Create a configuration file for the keep-alive script
+    cat > "${WORKDIR}/keepalive.conf" << EOF
+export UUID="$UUID"
+export VLESS_PORT="$VLESS_PORT"
+export TUIC_PORT="$TUIC_PORT"
+export HY2_PORT="$HY2_PORT"
+export PROXYIP="$PROXYIP"
+export USERNAME="$USERNAME"
+export CURRENT_DOMAIN="$CURRENT_DOMAIN"
+EOF
+
     KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps_start.sh"
     KEEPALIVE_SCRIPT_PATH="${WORKDIR}/frps_start.sh"
 
@@ -626,8 +638,6 @@ install_keepalive () {
     fi
 
     chmod +x "$KEEPALIVE_SCRIPT_PATH"
-
-    # Modify the keep-alive script to use a more reliable process check
 
     # Kill any existing keep-alive script process
     pkill -f "frps_start.sh" >/dev/null 2>&1
