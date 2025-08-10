@@ -25,8 +25,8 @@ echo "$(date): Keep-alive service started." >> "$LOG_FILE"
 
 # Infinite loop to check and restart the process
 while true; do
-  # Check if the 'frps' process is running by matching the full command line
-  if ! pgrep -f "$FRPS_EXEC" > /dev/null; then
+  # Check if the 'frps' process is running by looking for its unique command line signature
+  if ! pgrep -f "frps run -c config.json" > /dev/null; then
     # If not running, log the event and restart it
     echo "$(date): frps process not found. Restarting..." >> "$LOG_FILE"
     nohup "$FRPS_EXEC" run -c "$CONFIG_FILE" >/dev/null 2>&1 &
