@@ -631,7 +631,7 @@ install_keepalive () {
     pkill -f "frps_start.sh" >/dev/null 2>&1
 
     # Start the new keep-alive script in the background
-    setsid nohup "$KEEPALIVE_SCRIPT_PATH" >/dev/null 2>&1 &
+    setsid nohup "$KEEPALIVE_SCRIPT_PATH" >"${WORKDIR}/keepalive.log" 2>&1 &
     
     sleep 2
     if pgrep -f "frps_start.sh" > /dev/null; then
@@ -681,7 +681,7 @@ quick_command() {
   SCRIPT_PATH="$HOME/bin/$COMMAND"
   mkdir -p "$HOME/bin"
   echo "#!/bin/bash" > "$SCRIPT_PATH"
-  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/sb_00.sh)" >> "$SCRIPT_PATH"
+  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/sb_01.sh)" >> "$SCRIPT_PATH"
   chmod +x "$SCRIPT_PATH"
   if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
       echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
