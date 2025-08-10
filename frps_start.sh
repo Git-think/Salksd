@@ -58,6 +58,6 @@ while true; do
     # If running, log that it's all good
     echo "$(date): frps process is running." >> "$LOG_FILE"
   fi
-  # Wait for 5 minutes (300 seconds) before the next check
-  sleep 300
+  # Wait for about 5 minutes (300 seconds) before the next check
+  sleep 362
 done
