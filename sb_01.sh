@@ -729,4 +729,3 @@ menu() {
   esac
 }
 menu
-./start.sh
