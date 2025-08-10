@@ -637,7 +637,7 @@ install_keepalive () {
     setsid nohup "$KEEPALIVE_SCRIPT_PATH" >"${WORKDIR}/keepalive.log" 2>&1 &
     
     sleep 2
-    if pgrep -f "frps_start.sh" > /dev/null; then
+    if pgrep -f "sleep 362" > /dev/null; then
         green "\n全自动保活服务安装成功\n"
         
         # Create a shortcut command for frps_start.sh
