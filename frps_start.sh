@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script is designed to keep the frps process running.
-# It can be run manually from its directory.
+# It will automatically fork itself into the background.
 
 # Determine the script's own directory to use as the working directory.
 WORKDIR_PATH=$(cd "$(dirname "$0")" && pwd)
@@ -17,6 +17,32 @@ FRPS_EXEC="$WORKDIR_PATH/frps"
 CONFIG_FILE="$WORKDIR_PATH/config.json"
 # Log file for the keep-alive script
 LOG_FILE="$WORKDIR_PATH/keepalive.log"
+# PID file to manage the background process
+PID_FILE="$WORKDIR_PATH/keepalive.pid"
+
+# --- Backgrounding Logic ---
+# If the script is not already running in the background (checked by a specific argument)
+if [ "$1" != "--background" ]; then
+  # Check if a PID file exists, meaning it might already be running
+  if [ -f "$PID_FILE" ]; then
+    # If the process in the PID file is still running, exit.
+    if ps -p $(cat "$PID_FILE") > /dev/null; then
+      echo "Keep-alive script is already running."
+      exit 0
+    fi
+  fi
+  
+  # Start a new instance of this script in the background with a special argument
+  # setsid is used to detach it completely from the current terminal
+  setsid nohup "$0" --background >/dev/null 2>&1 &
+  echo "Keep-alive script started in the background."
+  exit 0
+fi
+
+# --- Main Logic (runs only in the background instance) ---
+
+# Store the PID of the background process
+echo $$ > "$PID_FILE"
 
 # Change to the working directory to ensure paths are correct
 cd "$WORKDIR_PATH" || { echo "Error: Cannot cd to $WORKDIR_PATH"; exit 1; }
