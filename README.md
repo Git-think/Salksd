@@ -2,3 +2,7 @@
 ```
 bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Sing-box/refs/heads/main/sb_00.sh)
 ```
+```bash
+#自改
+bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Sing-box/refs/heads/main/sb.sh)
+```
