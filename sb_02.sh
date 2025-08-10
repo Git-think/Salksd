@@ -643,8 +643,32 @@ install_keepalive () {
         local keepalive_command="frps-start"
         local keepalive_path="$HOME/bin/$keepalive_command"
         mkdir -p "$HOME/bin"
-        echo "#!/bin/bash" > "$keepalive_path"
-        echo "bash <(curl -Ls $KEEPALIVE_SCRIPT_URL)" >> "$keepalive_path"
+        cat > "$keepalive_path" << EOF
+#!/bin/bash
+
+# The path to the actual keep-alive script, derived from WORKDIR
+KEEPALIVE_SCRIPT_PATH="${WORKDIR}/frps_start.sh"
+
+# Check if the keep-alive script is already running
+if pgrep -f "frps_start.sh" > /dev/null; then
+    echo "frps 保活服务已经在运行中。"
+    exit 0
+fi
+
+# Kill any old instances just in case
+pkill -f "frps_start.sh" >/dev/null 2>&1
+
+# Start the new keep-alive script in the background
+nohup "\$KEEPALIVE_SCRIPT_PATH" >/dev/null 2>&1 &
+
+# Wait a moment and check if it started successfully
+sleep 2
+if pgrep -f "frps_start.sh" > /dev/null; then
+    echo "frps 保活服务已成功启动到后台。"
+else
+    echo "frps 保活服务启动失败。"
+fi
+EOF
         chmod +x "$keepalive_path"
 
         if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
