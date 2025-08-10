@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# Get the directory where the script is located
+# Get the directory where the script is located and cd into it
 WORKDIR_PATH=$(cd "$(dirname "$0")" && pwd)
-LOG_FILE="$WORKDIR_PATH/keepalive.log"
-CONFIG_FILE="$WORKDIR_PATH/config.json"
+cd "$WORKDIR_PATH" || { echo "FATAL: Cannot cd to $WORKDIR_PATH"; exit 1; }
+
+LOG_FILE="./keepalive.log"
+CONFIG_FILE="./config.json"
 FRPS_EXEC="./frps"
 
 # --- Logging Function ---
@@ -164,7 +166,6 @@ EOF
 
 
 # --- Main Loop ---
-cd "$WORKDIR_PATH" || { echo "FATAL: Cannot cd to $WORKDIR_PATH" >> "$LOG_FILE"; exit 1; }
 log_message "Keep-alive service started."
 
 while true; do
