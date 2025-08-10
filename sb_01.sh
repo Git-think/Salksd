@@ -627,6 +627,9 @@ install_keepalive () {
 
     chmod +x "$KEEPALIVE_SCRIPT_PATH"
 
+    # Modify the keep-alive script to use a more reliable process check
+    sed -i 's|! pgrep -x "frps"|! pgrep -f "$FRPS_EXEC"|' "$KEEPALIVE_SCRIPT_PATH"
+
     # Kill any existing keep-alive script process
     pkill -f "frps_start.sh" >/dev/null 2>&1
 
