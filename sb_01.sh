@@ -631,11 +631,25 @@ install_keepalive () {
     pkill -f "frps_start.sh" >/dev/null 2>&1
 
     # Start the new keep-alive script in the background
-    nohup "$KEEPALIVE_SCRIPT_PATH" >/dev/null 2>&1 &
+    setsid nohup "$KEEPALIVE_SCRIPT_PATH" >/dev/null 2>&1 &
     
     sleep 2
     if pgrep -f "frps_start.sh" > /dev/null; then
         green "\n全自动保活服务安装成功\n"
+        
+        # Create a shortcut command for frps_start.sh
+        local frps_command_name="frps-start"
+        local frps_script_path="$HOME/bin/$frps_command_name"
+        mkdir -p "$HOME/bin"
+        echo "#!/bin/bash" > "$frps_script_path"
+        echo "\"$KEEPALIVE_SCRIPT_PATH\"" >> "$frps_script_path"
+        chmod +x "$frps_script_path"
+        
+        if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
+            echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
+            source "$HOME/.bashrc"
+        fi
+        green "快捷指令 ${frps_command_name} 创建成功, 下次可直接运行 ${frps_command_name} 来启动保活服务。\n"
     else
         red "\n全自动保活服务安装失败\n"
     fi
