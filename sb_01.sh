@@ -628,7 +628,7 @@ install_keepalive () {
     chmod +x "$KEEPALIVE_SCRIPT_PATH"
 
     # Modify the keep-alive script to use a more reliable process check
-    sed -i 's|! pgrep -x "frps"|! pgrep -f "$FRPS_EXEC"|' "$KEEPALIVE_SCRIPT_PATH"
+    # sed -i 's|! pgrep -x "frps"|! pgrep -f "$FRPS_EXEC"|' "$KEEPALIVE_SCRIPT_PATH"
 
     # Kill any existing keep-alive script process
     pkill -f "frps_start.sh" >/dev/null 2>&1
@@ -712,7 +712,7 @@ yellow "\n自适应节点订阅链接: https://api.${USERNAME}.${CURRENT_DOMAIN}
 menu() {
   clear
   echo ""
-  purple "=== Serv00|ct8 frps一键三协议安装脚本法 ===\n"
+  purple "=== frps一键三协议安装脚本 ===\n"
   purple "转载请著名出处，请勿滥用\n"
   yellow "快速启动命令00\n"
   green "1. 安装三合一"
