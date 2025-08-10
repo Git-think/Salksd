@@ -634,7 +634,7 @@ install_keepalive () {
     pkill -f "frps_start.sh" >/dev/null 2>&1
 
     # Start the new keep-alive script in the background
-    setsid nohup "$KEEPALIVE_SCRIPT_PATH" >"${WORKDIR}/keepalive.log" 2>&1 &
+    nohup "$KEEPALIVE_SCRIPT_PATH" >"${WORKDIR}/keepalive.log" 2>&1 &
     
     sleep 2
     if pgrep -f "sleep 362" > /dev/null; then
