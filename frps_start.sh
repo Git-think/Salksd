@@ -1,39 +1,200 @@
 #!/bin/bash
 
-# This script is designed to keep the frps process running.
-
-# Determine the script's own directory to use as the working directory.
+# Get the directory where the script is located
 WORKDIR_PATH=$(cd "$(dirname "$0")" && pwd)
-
-if [ -z "$WORKDIR_PATH" ]; then
-  echo "Error: Could not determine working directory." >> "$WORKDIR_PATH/keepalive.log"
-  exit 1
-fi
-
-# The main executable for frps
-FRPS_EXEC="$WORKDIR_PATH/frps"
-# The configuration file
-CONFIG_FILE="$WORKDIR_PATH/config.json"
-# Log file for the keep-alive script
 LOG_FILE="$WORKDIR_PATH/keepalive.log"
+CONFIG_FILE="$WORKDIR_PATH/config.json"
+FRPS_EXEC="./frps"
 
-# Change to the working directory to ensure paths are correct
-cd "$WORKDIR_PATH" || { echo "Error: Cannot cd to $WORKDIR_PATH" >> "$LOG_FILE"; exit 1; }
+# --- Logging Function ---
+log_message() {
+    echo "$(date): $1" >> "$LOG_FILE"
+}
 
-# Log that the keep-alive service has started
-echo "$(date): Keep-alive service started." >> "$LOG_FILE"
+# --- Load Configuration ---
+# Loads variables from keepalive.conf
+load_config() {
+    local conf_file="$WORKDIR_PATH/keepalive.conf"
+    if [ -f "$conf_file" ]; then
+        source "$conf_file"
+        return 0
+    else
+        log_message "Error: Configuration file not found at $conf_file."
+        return 1
+    fi
+}
 
-# Infinite loop to check and restart the process
+# --- Get Available IP ---
+# Logic from sb.sh to determine the best IP to use
+get_ip() {
+  IP_LIST=($(devil vhost list | awk '/^[0-9]+/ {print $1}'))
+  API_URL="https://status.eooce.com/api"
+  IP=""
+  THIRD_IP=${IP_LIST}
+  RESPONSE=$(curl -s --max-time 2 "${API_URL}/${THIRD_IP}")
+  if [[ $(echo "$RESPONSE" | jq -r '.status') == "Available" ]]; then
+      IP=$THIRD_IP
+  else
+      FIRST_IP=${IP_LIST}
+      RESPONSE=$(curl -s --max-time 2 "${API_URL}/${FIRST_IP}")
+      if [[ $(echo "$RESPONSE" | jq -r '.status') == "Available" ]]; then
+          IP=$FIRST_IP
+      else
+          IP=${IP_LIST}
+      fi
+  fi
+  echo "$IP"
+}
+
+# --- Download frps Executable ---
+# Logic from sb.sh to download the frps binary
+download_frps_binary() {
+    log_message "frps executable not found. Downloading..."
+    ARCH=$(uname -m)
+    if [ "$ARCH" == "arm" ] || [ "$ARCH" == "arm64" ] || [ "$ARCH" == "aarch64" ]; then
+        BASE_URL="https://github.com/eooce/test/releases/download/freebsd-arm64"
+    elif [ "$ARCH" == "amd64" ] || [ "$ARCH" == "x86_64" ] || [ "$ARCH" == "x86" ]; then
+        BASE_URL="https://github.com/eooce/test/releases/download/freebsd"
+    else
+        log_message "Unsupported architecture: $ARCH"
+        return 1
+    fi
+    
+    local frps_url="$BASE_URL/sb"
+    curl -L -sS --max-time 10 -o "$FRPS_EXEC" "$frps_url" || wget -q -O "$FRPS_EXEC" "$frps_url"
+    
+    if [ -f "$FRPS_EXEC" ]; then
+        chmod +x "$FRPS_EXEC"
+        log_message "frps executable downloaded successfully."
+        return 0
+    else
+        log_message "Failed to download frps executable."
+        return 1
+    fi
+}
+
+# --- Generate frps Configuration ---
+# Logic from sb.sh to generate config.json
+generate_config_file() {
+    log_message "config.json not found. Generating..."
+    
+    # Generate keys and certificates
+    output=$($FRPS_EXEC generate reality-keypair)
+    private_key=$(echo "${output}" | awk '/PrivateKey:/ {print $2}')
+    public_key=$(echo "${output}" | awk '/PublicKey:/ {print $2}')
+    
+    [[ "$PROXYIP" == "true" ]] && SNI="time.is" || SNI="www.cerebrium.ai"
+    
+    openssl ecparam -genkey -name prime256v1 -out "private.key" >/dev/null 2>&1
+    openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=api.$USERNAME.${CURRENT_DOMAIN}" >/dev/null 2>&1
+      
+    log_message "Getting available IP..."
+    available_ip=$(get_ip)
+    log_message "Using IP: $available_ip"
+
+    # Create config.json
+    cat > "$CONFIG_FILE" << EOF
+{
+  "log": {
+    "disabled": true,
+    "level": "info",
+    "timestamp": true
+  },
+  "inbounds": [
+    {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "$available_ip",
+       "listen_port": $HY2_PORT,
+       "users": [ { "password": "$UUID" } ],
+       "masquerade": "https://bing.com",
+       "tls": {
+           "enabled": true,
+           "alpn": [ "h3" ],
+           "certificate_path": "cert.pem",
+           "key_path": "private.key"
+        }
+    },
+    {
+        "tag": "vless-reality-vesion",
+        "type": "vless",
+        "listen": "$available_ip",
+        "listen_port": $VLESS_PORT,
+        "users": [ { "uuid": "$UUID", "flow": "xtls-rprx-vision" } ],
+        "tls": {
+            "enabled": true,
+            "server_name": "$SNI",
+            "reality": {
+                "enabled": true,
+                "handshake": { "server": "$SNI", "server_port": 443 },
+                "private_key": "$private_key",
+                "short_id": [ "" ]
+            }
+        }
+    },
+    {
+      "tag": "tuic-in",
+      "type": "tuic",
+      "listen": "$available_ip",
+      "listen_port": $TUIC_PORT,
+      "users": [ { "uuid": "$UUID", "password": "admin" } ],
+      "congestion_control": "bbr",
+      "tls": {
+        "enabled": true,
+        "alpn": [ "h3" ],
+        "certificate_path": "cert.pem",
+        "key_path": "private.key"
+      }
+    }
+ ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    }
+  ]
+}
+EOF
+    log_message "config.json generated successfully."
+}
+
+
+# --- Main Loop ---
+cd "$WORKDIR_PATH" || { echo "FATAL: Cannot cd to $WORKDIR_PATH" >> "$LOG_FILE"; exit 1; }
+log_message "Keep-alive service started."
+
 while true; do
-  # Check if the 'frps' process is running by looking for its unique command line signature
-  if ! pgrep -f "frps run -c config.json" > /dev/null; then
-    # If not running, log the event and restart it
-    echo "$(date): frps process not found. Restarting..." >> "$LOG_FILE"
+  # 1. Load config. If it fails, we can't proceed.
+  if ! load_config; then
+      sleep 300
+      continue
+  fi
+
+  # 2. Check for frps executable
+  if [ ! -f "$FRPS_EXEC" ]; then
+      if ! download_frps_binary; then
+          log_message "Will retry download in 5 minutes."
+          sleep 300
+          continue
+      fi
+  fi
+
+  # 3. Check for config file
+  if [ ! -f "$CONFIG_FILE" ]; then
+      generate_config_file
+  fi
+
+  # 4. Check if the process is running
+  if ! pgrep -f "frps run -c $CONFIG_FILE" > /dev/null; then
+    log_message "frps process not found. Restarting..."
     nohup "$FRPS_EXEC" run -c "$CONFIG_FILE" >/dev/null 2>&1 &
   else
-    # If running, log that it's all good
-    echo "$(date): frps process is running." >> "$LOG_FILE"
+    log_message "frps process is running."
   fi
-  # Wait for 5 minutes (300 seconds) before the next check
+  
   sleep 300
 done
