@@ -25,30 +25,32 @@ jobs:
           path: frps_source # Checkout to a specific subdirectory
 
       # Step 2: Obfuscate the scripts using obfsh
-      - name: Obfuscate Scripts
+      - name: Obfuscate Scripts with Base64
         run: |
-          # Install Python and pip
-          sudo apt-get update
-          sudo apt-get install -y python3 python3-pip
-          
-          # Install obfsh
-          sudo pip3 install git+https://github.com/Ciphey/obfsh.git
-          
-          # Navigate to the source directory
           cd frps_source
-          
-          echo "Obfuscating frps.sh..."
+
+          # Obfuscate frps.sh
           if [ -f "frps.sh" ]; then
-            obfsh -i ./frps.sh -o ./frps.sh
+            echo "Obfuscating frps.sh..."
+            # Base64 encode the script
+            encoded_script=$(base64 -w 0 frps.sh)
+            # Create the obfuscated script
+            echo "#!/bin/sh" > frps.sh
+            echo "eval \"\$(echo \\"$encoded_script\\" | base64 --decode)\"" >> frps.sh
           else
             echo "Warning: frps.sh not found."
           fi
-          
-          echo "Obfuscating frps-start.sh..."
-          if [ -f "frps-start.sh" ]; then
-            obfsh -i ./frps-start.sh -o ./frps-start.sh
+
+          # Obfuscate frps_start.sh
+          if [ -f "frps_start.sh" ]; then
+            echo "Obfuscating frps_start.sh..."
+            # Base64 encode the script
+            encoded_script=$(base64 -w 0 frps_start.sh)
+            # Create the obfuscated script
+            echo "#!/bin/sh" > frps_start.sh
+            echo "eval \"\$(echo \\"$encoded_script\\" | base64 --decode)\"" >> frps_start.sh
           else
-            echo "Warning: frps-start.sh not found."
+            echo "Warning: frps_start.sh not found."
           fi
 
       # Step 3: Checkout the 'main' branch to a separate directory
