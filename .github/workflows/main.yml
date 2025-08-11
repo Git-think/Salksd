@@ -1,0 +1,83 @@
+# GitHub Action: Encrypt and Deploy Scripts
+# This workflow automates the process of encrypting shell scripts
+# from the 'frps' branch and deploying them to the 'main' branch.
+
+name: Encrypt and Sync to Main
+
+# Trigger the workflow on pushes to the 'frps' branch, or manually
+on:
+  push:
+    branches:
+      - frps
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout the source code from the 'frps' branch
+      - name: Checkout frps branch (source)
+        uses: actions/checkout@v4
+        with:
+          ref: frps
+          path: frps_source # Checkout to a specific subdirectory
+
+      # Step 2: Encrypt the scripts using gzexe
+      - name: Encrypt Scripts
+        run: |
+          # Ensure gzexe is installed
+          sudo apt-get update
+          sudo apt-get install -y gzip
+          
+          # Navigate to the source directory
+          cd frps_source
+          
+          echo "Encrypting frps.sh..."
+          if [ -f "frps.sh" ]; then
+            gzexe ./frps.sh
+            rm -f ./frps.sh~ # Remove the original backup file
+          else
+            echo "Warning: frps.sh not found."
+          fi
+          
+          echo "Encrypting frps-start.sh..."
+          if [ -f "frps-start.sh" ]; then
+            gzexe ./frps-start.sh
+            rm -f ./frps-start.sh~ # Remove the original backup file
+          else
+            echo "Warning: frps-start.sh not found."
+          fi
+          
+          # Ensure the encrypted scripts are executable
+          chmod +x ./*.sh
+
+      # Step 3: Checkout the 'main' branch to a separate directory
+      - name: Checkout main branch (destination)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main_dest
+
+      # Step 4: Copy the encrypted files to the main branch checkout
+      - name: Copy encrypted files to main checkout
+        run: |
+          echo "Copying encrypted files..."
+          if [ -f "frps_source/frps.sh" ]; then
+            cp frps_source/frps.sh main_dest/frps.sh
+            echo "frps.sh copied."
+          fi
+          if [ -f "frps_source/frps-start.sh" ]; then
+            cp frps_source/frps-start.sh main_dest/frps-start.sh
+            echo "frps-start.sh copied."
+          fi
+
+      # Step 5: Commit the changes and push to the 'main' branch
+      - name: Commit and push to main
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          repository: main_dest # Specify the directory to commit
+          commit_message: "Automated: Sync and encrypt scripts from frps branch"
+          branch: main
+          # The action will only commit if there are changes
