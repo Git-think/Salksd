@@ -30,16 +30,16 @@ jobs:
           cd frps_source
 
           # Obfuscate frps.sh
-          if [ -f "frps.sh" ]; then
-            echo "Obfuscating frps.sh..."
-            # Base64 encode the script
-            encoded_script=$(base64 -w 0 frps.sh)
-            # Create the obfuscated script
-            echo "#!/bin/sh" > frps.sh
-            echo "echo \"$encoded_script\" | base64 --decode | bash" >> frps.sh
-          else
-            echo "Warning: frps.sh not found."
-          fi
+          # if [ -f "frps.sh" ]; then
+          #   echo "Obfuscating frps.sh..."
+          #   # Base64 encode the script
+          #   encoded_script=$(base64 -w 0 frps.sh)
+          #   # Create the obfuscated script
+          #   echo "#!/bin/sh" > frps.sh
+          #   echo "echo \"$encoded_script\" | base64 --decode | bash" >> frps.sh
+          # else
+          #   echo "Warning: frps.sh not found."
+          # fi
 
           # Obfuscate frps_start.sh
           if [ -f "frps_start.sh" ]; then
@@ -66,9 +66,8 @@ jobs:
           echo "Copying scripts..."
           # Copy the obfuscated frps.sh
           if [ -f "frps_source/frps.sh" ]; then
-            # cp frps_source/frps.sh main_dest/frps.sh
-            # echo "frps.sh copied."
-            echo "hhh"
+            cp frps_source/frps.sh main_dest/frps.sh
+            echo "frps.sh copied."
           else
             echo "Warning: frps.sh not found."
           fi
