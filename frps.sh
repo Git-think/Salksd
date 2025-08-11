@@ -29,7 +29,7 @@ else
 fi
 WORKDIR="${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/logs"
 FILE_PATH="${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/public_html"
-mkdir -p "$WORKDIR" "$FILE_PATH" && chmod 777 "$WORKDIR" "$FILE_PATH" >/dev/null 2>&1
+mkdir -p "$FILE_PATH" && chmod 777 "$WORKDIR" "$FILE_PATH" >/dev/null 2>&1
 command -v curl &>/dev/null && COMMAND="curl -so" || command -v wget &>/dev/null && COMMAND="wget -qO" || { red "Error: neither curl nor wget found, please install one of them." >&2; exit 1; }
 
 check_port () {
@@ -634,7 +634,7 @@ green "快捷指令00创建成功,下次运行输入00快速进入菜单\n"
 
 get_nodes(){
 cat ${FILE_PATH}/list.txt
-RE_SUB_TOKEN=$(grep -oP 'RewriteRule \^\K[a-zA-Z0-9]+' ${FILE_PATH}/.htaccess | head -n 1)
+RE_SUB_TOKEN=$(sed -n 's/RewriteRule \^\([a-zA-Z0-9]\{1,\}\).*/\1/p' ${FILE_PATH}/.htaccess)
 echo ""
 "${WORKDIR}/qrencode" -m 2 -t UTF8 "http://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}"
 yellow "\n自适应节点订阅链接: http://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
