@@ -136,7 +136,7 @@ generate_config_file() {
         }
     },
     {
-        "tag": "vless-reality-vesion",
+        "tag": "vless-reality-version",
         "type": "vless",
         "listen": "$available_ip",
         "listen_port": $VLESS_PORT,
