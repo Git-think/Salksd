@@ -13,6 +13,8 @@ on:
 
 jobs:
   build-and-deploy:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       # Step 1: Checkout the source code from the 'frps' branch
