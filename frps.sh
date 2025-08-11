@@ -664,7 +664,8 @@ menu() {
       3) changge_ports ;;
       4) reset_system ;;
       0) exit 0 ;;
-      *) echo "${choice}" && menu ;;
+      *) red "无效的选项，请输入 0 到 4" ;;
   esac
 }
+menu
 menu
