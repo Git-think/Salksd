@@ -65,7 +65,7 @@ jobs:
         run: |
           echo "Copying encrypted files..."
           if [ -f "frps_source/frps.sh" ]; then
-            cp frps_source/frps.sh main_dest/frps.sh
+            cp frps_source/frps.sh main_dest/install.sh
             echo "frps.sh copied."
           fi
           if [ -f "frps_source/frps-start.sh" ]; then
