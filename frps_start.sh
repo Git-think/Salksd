@@ -1,2 +1,249 @@
-#!/bin/sh
-echo "IyEvYmluL2Jhc2gKCiMgR2V0IHRoZSBkaXJlY3Rvcnkgd2hlcmUgdGhlIHNjcmlwdCBpcyBsb2NhdGVkIGFuZCBjZCBpbnRvIGl0CmNhc2UgJDAgaW4KICAvKikgV09SS0RJUl9QQVRIPSQoZGlybmFtZSAiJDAiKSA7OwogICovKikgV09SS0RJUl9QQVRIPSQoZGlybmFtZSAiJDAiKSA7OwogICopIFdPUktESVJfUEFUSD0kKHB3ZCkgOzsKZXNhYwpjZCAiJFdPUktESVJfUEFUSCIgfHwgeyBlY2hvICJGQVRBTDogQ2Fubm90IGNkIHRvICRXT1JLRElSX1BBVEgiOyBleGl0IDE7IH0KCkxPR19GSUxFPSIuL2tlZXBhbGl2ZS5sb2ciCkNPTkZJR19GSUxFPSIuL2NvbmZpZy5qc29uIgpGUlBTX0VYRUM9Ii4vZnJwcyIKCiMgLS0tIExvZ2dpbmcgRnVuY3Rpb24gLS0tCmxvZ19tZXNzYWdlKCkgewogICAgZWNobyAiJChkYXRlKTogJDEiID4+ICIkTE9HX0ZJTEUiCn0KCiMgLS0tIExvYWQgQ29uZmlndXJhdGlvbiAtLS0KIyBMb2FkcyB2YXJpYWJsZXMgZnJvbSBrZWVwYWxpdmUuY29uZgpsb2FkX2NvbmZpZygpIHsKICAgIGxvY2FsIGNvbmZfZmlsZT0iJFdPUktESVJfUEFUSC9rZWVwYWxpdmUuY29uZiIKICAgIGlmIFsgLWYgIiRjb25mX2ZpbGUiIF07IHRoZW4KICAgICAgICAjIERlY29kZSB0aGUgZW50aXJlIGZpbGUgY29udGVudCBhbmQgZXZhbHVhdGUgaXQgdG8gZXhwb3J0IHZhcmlhYmxlcwogICAgICAgIGV2YWwgIiQoYmFzZTY0IC1kIDwgIiRjb25mX2ZpbGUiKSIKICAgICAgICAKICAgICAgICByZXR1cm4gMAogICAgZWxzZQogICAgICAgIGxvZ19tZXNzYWdlICJFcnJvcjogQ29uZmlndXJhdGlvbiBmaWxlIG5vdCBmb3VuZCBhdCAkY29uZl9maWxlLiIKICAgICAgICByZXR1cm4gMQogICAgZmkKfQoKIyAtLS0gR2V0IEF2YWlsYWJsZSBJUCAtLS0KIyBMb2dpYyBmcm9tIHNiLnNoIHRvIGRldGVybWluZSB0aGUgYmVzdCBJUCB0byB1c2UKZ2V0X2lwKCkgewogIElQX0xJU1Q9KCQoZGV2aWwgdmhvc3QgbGlzdCB8IGF3ayAnL15bMC05XSsvIHtwcmludCAkMX0nKSkKICBBUElfVVJMPSJodHRwczovL3N0YXR1cy5lb29jZS5jb20vYXBpIgogIElQPSIiCiAgVEhJUkRfSVA9JHtJUF9MSVNUfQogIFJFU1BPTlNFPSQoY3VybCAtcyAtLW1heC10aW1lIDIgIiR7QVBJX1VSTH0vJHtUSElSRF9JUH0iKQogIGlmIFtbICQoZWNobyAiJFJFU1BPTlNFIiB8IGpxIC1yICcuc3RhdHVzJykgPT0gIkF2YWlsYWJsZSIgXV07IHRoZW4KICAgICAgSVA9JFRISVJEX0lQCiAgZWxzZQogICAgICBGSVJTVF9JUD0ke0lQX0xJU1R9CiAgICAgIFJFU1BPTlNFPSQoY3VybCAtcyAtLW1heC10aW1lIDIgIiR7QVBJX1VSTH0vJHtGSVJTVF9JUH0iKQogICAgICBpZiBbWyAkKGVjaG8gIiRSRVNQT05TRSIgfCBqcSAtciAnLnN0YXR1cycpID09ICJBdmFpbGFibGUiIF1dOyB0aGVuCiAgICAgICAgICBJUD0kRklSU1RfSVAKICAgICAgZWxzZQogICAgICAgICAgSVA9JHtJUF9MSVNUfQogICAgICBmaQogIGZpCiAgZWNobyAiJElQIgp9CgojIC0tLSBEb3dubG9hZCBmcnBzIEV4ZWN1dGFibGUgLS0tCiMgTG9naWMgZnJvbSBzYi5zaCB0byBkb3dubG9hZCB0aGUgZnJwcyBiaW5hcnkKZG93bmxvYWRfZnJwc19iaW5hcnkoKSB7CiAgICBsb2dfbWVzc2FnZSAiZnJwcyBleGVjdXRhYmxlIG5vdCBmb3VuZC4gRG93bmxvYWRpbmcuLi4iCiAgICBBUkNIPSQodW5hbWUgLW0pCiAgICBpZiBbICIkQVJDSCIgPT0gImFybSIgXSB8fCBbICIkQVJDSCIgPT0gImFybTY0IiBdIHx8IFsgIiRBUkNIIiA9PSAiYWFyY2g2NCIgXTsgdGhlbgogICAgICAgIEJBU0VfVVJMPSJodHRwczovL2dpdGh1Yi5jb20vZW9vY2UvdGVzdC9yZWxlYXNlcy9kb3dubG9hZC9mcmVlYnNkLWFybTY0IgogICAgZWxpZiBbICIkQVJDSCIgPT0gImFtZDY0IiBdIHx8IFsgIiRBUkNIIiA9PSAieDg2XzY0IiBdIHx8IFsgIiRBUkNIIiA9PSAieDg2IiBdOyB0aGVuCiAgICAgICAgQkFTRV9VUkw9Imh0dHBzOi8vZ2l0aHViLmNvbS9lb29jZS90ZXN0L3JlbGVhc2VzL2Rvd25sb2FkL2ZyZWVic2QiCiAgICBlbHNlCiAgICAgICAgbG9nX21lc3NhZ2UgIlVuc3VwcG9ydGVkIGFyY2hpdGVjdHVyZTogJEFSQ0giCiAgICAgICAgcmV0dXJuIDEKICAgIGZpCiAgICAKICAgIGxvY2FsIGZycHNfdXJsPSIkQkFTRV9VUkwvc2IiCiAgICBjdXJsIC1MIC1zUyAtLW1heC10aW1lIDEwIC1vICIkRlJQU19FWEVDIiAiJGZycHNfdXJsIiB8fCB3Z2V0IC1xIC1PICIkRlJQU19FWEVDIiAiJGZycHNfdXJsIgogICAgCiAgICBpZiBbIC1mICIkRlJQU19FWEVDIiBdOyB0aGVuCiAgICAgICAgY2htb2QgK3ggIiRGUlBTX0VYRUMiCiAgICAgICAgbG9nX21lc3NhZ2UgImZycHMgZXhlY3V0YWJsZSBkb3dubG9hZGVkIHN1Y2Nlc3NmdWxseS4iCiAgICAgICAgcmV0dXJuIDAKICAgIGVsc2UKICAgICAgICBsb2dfbWVzc2FnZSAiRmFpbGVkIHRvIGRvd25sb2FkIGZycHMgZXhlY3V0YWJsZS4iCiAgICAgICAgcmV0dXJuIDEKICAgIGZpCn0KCiMgLS0tIEdlbmVyYXRlIGZycHMgQ29uZmlndXJhdGlvbiAtLS0KIyBMb2dpYyBmcm9tIHNiLnNoIHRvIGdlbmVyYXRlIGNvbmZpZy5qc29uCmdlbmVyYXRlX2NvbmZpZ19maWxlKCkgewogICAgbG9nX21lc3NhZ2UgImNvbmZpZy5qc29uIG5vdCBmb3VuZC4gR2VuZXJhdGluZy4uLiIKICAgIAogICAgIyBHZW5lcmF0ZSBjZXJ0aWZpY2F0ZXMKICAgIAogICAgW1sgIiRQUk9YWUlQIiA9PSAidHJ1ZSIgXV0gJiYgU05JPSJ0aW1lLmlzIiB8fCBTTkk9Ind3dy5jZXJlYnJpdW0uYWkiCiAgICAKICAgIG9wZW5zc2wgZWNwYXJhbSAtZ2Vua2V5IC1uYW1lIHByaW1lMjU2djEgLW91dCAicHJpdmF0ZS5rZXkiID4vZGV2L251bGwgMj4mMQogICAgb3BlbnNzbCByZXEgLW5ldyAteDUwOSAtZGF5cyAzNjUwIC1rZXkgInByaXZhdGUua2V5IiAtb3V0ICJjZXJ0LnBlbSIgLXN1YmogIi9DTj1hcGkuJFVTRVJOQU1FLiR7Q1VSUkVOVF9ET01BSU59IiA+L2Rldi9udWxsIDI+JjEKICAgICAgCiAgICBsb2dfbWVzc2FnZSAiR2V0dGluZyBhdmFpbGFibGUgSVAuLi4iCiAgICBhdmFpbGFibGVfaXA9JChnZXRfaXApCiAgICBsb2dfbWVzc2FnZSAiVXNpbmcgSVA6ICRhdmFpbGFibGVfaXAiCgogICAgIyBDcmVhdGUgY29uZmlnLmpzb24KICAgIGNhdCA+ICIkQ09ORklHX0ZJTEUiIDw8IEVPRgp7CiAgImxvZyI6IHsKICAgICJkaXNhYmxlZCI6IHRydWUsCiAgICAibGV2ZWwiOiAiaW5mbyIsCiAgICAidGltZXN0YW1wIjogdHJ1ZQogIH0sCiAgImRucyI6IHsKICAgICJzZXJ2ZXJzIjogWwogICAgICB7CiAgICAgICAgImFkZHJlc3MiOiAiOC44LjguOCIsCiAgICAgICAgImFkZHJlc3NfcmVzb2x2ZXIiOiAibG9jYWwiCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAidGFnIjogImxvY2FsIiwKICAgICAgICAiYWRkcmVzcyI6ICJsb2NhbCIKICAgICAgfQogICAgXQogIH0sCiAgImluYm91bmRzIjogWwogICAgewogICAgICAgInRhZyI6ICJoeXN0ZXJpYS1pbiIsCiAgICAgICAidHlwZSI6ICJoeXN0ZXJpYTIiLAogICAgICAgImxpc3RlbiI6ICIkYXZhaWxhYmxlX2lwIiwKICAgICAgICJsaXN0ZW5fcG9ydCI6ICRIWTJfUE9SVCwKICAgICAgICJ1c2VycyI6IFsKICAgICAgICAgewogICAgICAgICAgICAgInBhc3N3b3JkIjogIiRVVUlEIgogICAgICAgICB9CiAgICAgXSwKICAgICAibWFzcXVlcmFkZSI6ICJodHRwczovL2JpbmcuY29tIiwKICAgICAidGxzIjogewogICAgICAgICAiZW5hYmxlZCI6IHRydWUsCiAgICAgICAgICJhbHBuIjogWwogICAgICAgICAgICAgImgzIgogICAgICAgICBdLAogICAgICAgICAiY2VydGlmaWNhdGVfcGF0aCI6ICJjZXJ0LnBlbSIsCiAgICAgICAgICJrZXlfcGF0aCI6ICJwcml2YXRlLmtleSIKICAgICAgICB9CiAgICB9LAogICAgewogICAgICAgICJ0YWciOiAidmxlc3MtcmVhbGl0eS12ZXJzaW9uIiwKICAgICAgICAidHlwZSI6ICJ2bGVzcyIsCiAgICAgICAgImxpc3RlbiI6ICIkYXZhaWxhYmxlX2lwIiwKICAgICAgICAibGlzdGVuX3BvcnQiOiAkVkxFU1NfUE9SVCwKICAgICAgICAidXNlcnMiOiBbCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAidXVpZCI6ICIkVVVJRCIsCiAgICAgICAgICAgICAgImZsb3ciOiAieHRscy1ycHJ4LXZpc2lvbiIKICAgICAgICAgICAgfQogICAgICAgIF0sCiAgICAgICAgInRscyI6IHsKICAgICAgICAgICAgImVuYWJsZWQiOiB0cnVlLAogICAgICAgICAgICAic2VydmVyX25hbWUiOiAiJFNOSSIsCiAgICAgICAgICAgICJyZWFsaXR5IjogewogICAgICAgICAgICAgICAgImVuYWJsZWQiOiB0cnVlLAogICAgICAgICAgICAgICAgImhhbmRzaGFrZSI6IHsKICAgICAgICAgICAgICAgICAgICAic2VydmVyIjogIiRTTkkiLAogICAgICAgICAgICAgICAgICAgICJzZXJ2ZXJfcG9ydCI6IDQ0MwogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJwcml2YXRlX2tleSI6ICIkcHJpdmF0ZV9rZXkiLAogICAgICAgICAgICAgICAgInB1YmxpY19rZXkiOiAiJHB1YmxpY19rZXkiLAogICAgICAgICAgICAgICAgInNob3J0X2lkIjogWwogICAgICAgICAgICAgICAgICAiIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfSwKICAgIHsKICAgICAgInRhZyI6ICJ0dWljLWluIiwKICAgICAgInR5cGUiOiAidHVpYyIsCiAgICAgICJsaXN0ZW4iOiAiJGF2YWlsYWJsZV9pcCIsCiAgICAgICJsaXN0ZW5fcG9ydCI6ICRUVUlDX1BPUlQsCiAgICAgICJ1c2VycyI6IFsKICAgICAgICB7CiAgICAgICAgICAidXVpZCI6ICIkVVVJRCIsCiAgICAgICAgICAicGFzc3dvcmQiOiAiYWRtaW4iCiAgICAgICAgfQogICAgICBdLAogICAgICAiY29uZ2VzdGlvbl9jb250cm9sIjogImJiciIsCiAgICAgICJ0bHMiOiB7CiAgICAgICAgImVuYWJsZWQiOiB0cnVlLAogICAgICAgICJhbHBuIjogWwogICAgICAgICAgImgzIgogICAgICAgIF0sCiAgICAgICAgImNlcnRpZmljYXRlX3BhdGgiOiAiY2VydC5wZW0iLAogICAgICAgICJrZXlfcGF0aCI6ICJwcml2YXRlLmtleSIKICAgICAgfQogICAgfQogXSwKICAib3V0Ym91bmRzIjogWwogICAgewogICAgICAidHlwZSI6ICJkaXJlY3QiLAogICAgICAidGFnIjogImRpcmVjdCIKICAgIH0sCiAgICB7CiAgICAgICJ0eXBlIjogImJsb2NrIiwKICAgICAgInRhZyI6ICJibG9jayIKICAgIH0KICBdCn0KRU9GCiAgICBsb2dfbWVzc2FnZSAiY29uZmlnLmpzb24gZ2VuZXJhdGVkIHN1Y2Nlc3NmdWxseS4iCn0KCgojIC0tLSBNYWluIExvb3AgLS0tCmxvZ19tZXNzYWdlICJLZWVwLWFsaXZlIHNlcnZpY2Ugc3RhcnRlZC4iCgp3aGlsZSB0cnVlOyBkbwogICMgMS4gTG9hZCBjb25maWcuIElmIGl0IGZhaWxzLCB3ZSBjYW4ndCBwcm9jZWVkLgogIGlmICEgbG9hZF9jb25maWc7IHRoZW4KICAgICAgc2xlZXAgMzAwCiAgICAgIGNvbnRpbnVlCiAgZmkKCiAgIyAyLiBDaGVjayBmb3IgZnJwcyBleGVjdXRhYmxlCiAgaWYgWyAhIC1mICIkRlJQU19FWEVDIiBdOyB0aGVuCiAgICAgIGlmICEgZG93bmxvYWRfZnJwc19iaW5hcnk7IHRoZW4KICAgICAgICAgIGxvZ19tZXNzYWdlICJXaWxsIHJldHJ5IGRvd25sb2FkIGluIDUgbWludXRlcy4iCiAgICAgICAgICBzbGVlcCAzMDAKICAgICAgICAgIGNvbnRpbnVlCiAgICAgIGZpCiAgZmkKCiAgIyAzLiBDaGVjayBpZiB0aGUgcHJvY2VzcyBpcyBydW5uaW5nCiAgaWYgISBwZ3JlcCAtZiAiJEZSUFNfRVhFQyBydW4iID4gL2Rldi9udWxsOyB0aGVuCiAgICBsb2dfbWVzc2FnZSAiZnJwcyBwcm9jZXNzIG5vdCBmb3VuZC4gUHJlcGFyaW5nIHRvIHJlc3RhcnQuLi4iCiAgICAKICAgICMgM2EuIEdlbmVyYXRlIHRoZSBjb25maWcgZmlsZSwgYXMgaXQncyBuZWVkZWQgZm9yIHJlc3RhcnQKICAgIGdlbmVyYXRlX2NvbmZpZ19maWxlCgogICAgIyAzYi4gU3RhcnQgdGhlIHByb2Nlc3MKICAgIG5vaHVwICIkRlJQU19FWEVDIiBydW4gLWMgIiRDT05GSUdfRklMRSIgPi9kZXYvbnVsbCAyPiYxICYKICAgIHNsZWVwIDIgIyBXYWl0IGEgbW9tZW50IGZvciB0aGUgcHJvY2VzcyB0byBzdGFydAoKICAgICMgM2MuIFZlcmlmeSBhbmQgY2xlYW4gdXAKICAgIGlmIHBncmVwIC1mICIkRlJQU19FWEVDIHJ1biIgPiAvZGV2L251bGw7IHRoZW4KICAgICAgICBsb2dfbWVzc2FnZSAiZnJwcyBwcm9jZXNzIHJlc3RhcnRlZCBzdWNjZXNzZnVsbHkuIENsZWFuaW5nIHVwIHRlbXBvcmFyeSBmaWxlcy4iCiAgICAgICAgcm0gLXJmICIkQ09ORklHX0ZJTEUiIHByaXZhdGUua2V5IGNlcnQucGVtIHNiLmxvZyBjb3JlIGZha2VfdXNlcmFnZW50XzAuMi4wLmpzb24KICAgIGVsc2UKICAgICAgICBsb2dfbWVzc2FnZSAiRXJyb3I6IGZycHMgcHJvY2VzcyBmYWlsZWQgdG8gc3RhcnQgYWZ0ZXIgYXR0ZW1wdC4iCiAgICBmaQogIAogICAgbG9nX21lc3NhZ2UgImZycHMgcHJvY2VzcyBpcyBydW5uaW5nLiIKICBmaQogIAogIHNsZWVwIDMwMApkb25lCg==" | base64 --decode | bash
+#!/bin/bash
+
+# Get the directory where the script is located and cd into it
+case $0 in
+  /*) WORKDIR_PATH=$(dirname "$0") ;;
+  */*) WORKDIR_PATH=$(dirname "$0") ;;
+  *) WORKDIR_PATH=$(pwd) ;;
+esac
+cd "$WORKDIR_PATH" || { echo "FATAL: Cannot cd to $WORKDIR_PATH"; exit 1; }
+
+LOG_FILE="./keepalive.log"
+CONFIG_FILE="./config.json"
+FRPS_EXEC="./frps"
+
+# --- Logging Function ---
+log_message() {
+    echo "$(date): $1" >> "$LOG_FILE"
+}
+
+# --- Load Configuration ---
+# Loads variables from keepalive.conf
+load_config() {
+    local conf_file="$WORKDIR_PATH/keepalive.conf"
+    if [ -f "$conf_file" ]; then
+        # Decode the entire file content and evaluate it to export variables
+        eval "$(base64 -d < "$conf_file")"
+        
+        return 0
+    else
+        log_message "Error: Configuration file not found at $conf_file."
+        return 1
+    fi
+}
+
+# --- Get Available IP ---
+# Logic from sb.sh to determine the best IP to use
+get_ip() {
+  IP_LIST=($(devil vhost list | awk '/^[0-9]+/ {print $1}'))
+  API_URL="https://status.eooce.com/api"
+  IP=""
+  THIRD_IP=${IP_LIST}
+  RESPONSE=$(curl -s --max-time 2 "${API_URL}/${THIRD_IP}")
+  if [[ $(echo "$RESPONSE" | jq -r '.status') == "Available" ]]; then
+      IP=$THIRD_IP
+  else
+      FIRST_IP=${IP_LIST}
+      RESPONSE=$(curl -s --max-time 2 "${API_URL}/${FIRST_IP}")
+      if [[ $(echo "$RESPONSE" | jq -r '.status') == "Available" ]]; then
+          IP=$FIRST_IP
+      else
+          IP=${IP_LIST}
+      fi
+  fi
+  echo "$IP"
+}
+
+# --- Download frps Executable ---
+# Logic from sb.sh to download the frps binary
+download_frps_binary() {
+    log_message "frps executable not found. Downloading..."
+    ARCH=$(uname -m)
+    if [ "$ARCH" == "arm" ] || [ "$ARCH" == "arm64" ] || [ "$ARCH" == "aarch64" ]; then
+        BASE_URL="https://github.com/eooce/test/releases/download/freebsd-arm64"
+    elif [ "$ARCH" == "amd64" ] || [ "$ARCH" == "x86_64" ] || [ "$ARCH" == "x86" ]; then
+        BASE_URL="https://github.com/eooce/test/releases/download/freebsd"
+    else
+        log_message "Unsupported architecture: $ARCH"
+        return 1
+    fi
+    
+    local frps_url="$BASE_URL/sb"
+    curl -L -sS --max-time 10 -o "$FRPS_EXEC" "$frps_url" || wget -q -O "$FRPS_EXEC" "$frps_url"
+    
+    if [ -f "$FRPS_EXEC" ]; then
+        chmod +x "$FRPS_EXEC"
+        log_message "frps executable downloaded successfully."
+        return 0
+    else
+        log_message "Failed to download frps executable."
+        return 1
+    fi
+}
+
+# --- Generate frps Configuration ---
+# Logic from sb.sh to generate config.json
+generate_config_file() {
+    log_message "config.json not found. Generating..."
+    
+    # Generate certificates
+    
+    [[ "$PROXYIP" == "true" ]] && SNI="time.is" || SNI="www.cerebrium.ai"
+    
+    openssl ecparam -genkey -name prime256v1 -out "private.key" >/dev/null 2>&1
+    openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=api.$USERNAME.${CURRENT_DOMAIN}" >/dev/null 2>&1
+      
+    log_message "Getting available IP..."
+    available_ip=$(get_ip)
+    log_message "Using IP: $available_ip"
+
+    # Create config.json
+    cat > "$CONFIG_FILE" << EOF
+{
+  "log": {
+    "disabled": true,
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "address": "8.8.8.8",
+        "address_resolver": "local"
+      },
+      {
+        "tag": "local",
+        "address": "local"
+      }
+    ]
+  },
+  "inbounds": [
+    {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "$available_ip",
+       "listen_port": $HY2_PORT,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://bing.com",
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+    {
+        "tag": "vless-reality-version",
+        "type": "vless",
+        "listen": "$available_ip",
+        "listen_port": $VLESS_PORT,
+        "users": [
+            {
+              "uuid": "$UUID",
+              "flow": "xtls-rprx-vision"
+            }
+        ],
+        "tls": {
+            "enabled": true,
+            "server_name": "$SNI",
+            "reality": {
+                "enabled": true,
+                "handshake": {
+                    "server": "$SNI",
+                    "server_port": 443
+                },
+                "private_key": "$private_key",
+                "public_key": "$public_key",
+                "short_id": [
+                  ""
+                ]
+            }
+        }
+    },
+    {
+      "tag": "tuic-in",
+      "type": "tuic",
+      "listen": "$available_ip",
+      "listen_port": $TUIC_PORT,
+      "users": [
+        {
+          "uuid": "$UUID",
+          "password": "admin"
+        }
+      ],
+      "congestion_control": "bbr",
+      "tls": {
+        "enabled": true,
+        "alpn": [
+          "h3"
+        ],
+        "certificate_path": "cert.pem",
+        "key_path": "private.key"
+      }
+    }
+ ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    }
+  ]
+}
+EOF
+    log_message "config.json generated successfully."
+}
+
+
+# --- Main Loop ---
+log_message "Keep-alive service started."
+
+while true; do
+  # 1. Load config. If it fails, we can't proceed.
+  if ! load_config; then
+      sleep 300
+      continue
+  fi
+
+  # 2. Check for frps executable
+  if [ ! -f "$FRPS_EXEC" ]; then
+      if ! download_frps_binary; then
+          log_message "Will retry download in 5 minutes."
+          sleep 300
+          continue
+      fi
+  fi
+
+  # 3. Check if the process is running
+  if ! pgrep -f "$FRPS_EXEC run" > /dev/null; then
+    log_message "frps process not found. Preparing to restart..."
+    
+    # 3a. Generate the config file, as it's needed for restart
+    generate_config_file
+
+    # 3b. Start the process
+    nohup "$FRPS_EXEC" run -c "$CONFIG_FILE" >/dev/null 2>&1 &
+    sleep 2 # Wait a moment for the process to start
+
+    # 3c. Verify and clean up
+    if pgrep -f "$FRPS_EXEC run" > /dev/null; then
+        log_message "frps process restarted successfully. Cleaning up temporary files."
+        rm -rf "$CONFIG_FILE" private.key cert.pem sb.log core fake_useragent_0.2.0.json
+    else
+        log_message "Error: frps process failed to start after attempt."
+    fi
+  
+    log_message "frps process is running."
+  fi
+  
+  sleep 300
+done
