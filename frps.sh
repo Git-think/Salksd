@@ -668,4 +668,3 @@ menu() {
   esac
 }
 menu
-menu
