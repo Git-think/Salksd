@@ -160,35 +160,6 @@ read_variables() {
   [[ -z $PROXYIP ]] && PROXYIP="false"
   [[ "$PROXYIP" == "y" || "$PROXYIP" == "Y" ]] && PROXYIP="true"
 
-  reading "是否需要安装哪吒探针？(直接回车则不安装)【y/n】: " nz_choice
-  if [[ -z $nz_choice || ( "$nz_choice" != "y" && "$nz_choice" != "Y" ) ]]; then
-    yellow "跳过配置哪吒探针..."
-  else
-    reading "请输入哪吒探针域名或IP（v1格式: nezha.abc.com:8008, v0格式: nezha.abc.com）： " NEZHA_SERVER
-    green "你的哪吒域名为: $NEZHA_SERVER"
-
-    if [[ "$NEZHA_SERVER" != *":"* ]]; then
-      reading "请输入哪吒v0探针端口(直接回车将设置为5555): " NEZHA_PORT
-      [[ -z $NEZHA_PORT ]] && NEZHA_PORT="5555"
-      green "你的哪吒端口为: $NEZHA_PORT"
-    else
-      NEZHA_PORT=""
-    fi
-
-    reading "请输入v0的agent密钥或v1的NZ_CLIENT_SECRET: " NEZHA_KEY
-    green "你的哪吒密钥为: $NEZHA_KEY"
-  fi
-
-  reading "是否需要Telegram通知？(直接回车则不启用)【y/n】: " tg_notification
-  if [[ "$tg_notification" == "y" || "$tg_notification" == "Y" ]]; then
-    reading "请输入Telegram chat ID (tg上@laowang_serv00_bot获取): " tg_chat_id
-    [[ -z $tg_chat_id ]] && { echo "Telegram chat ID不能为空"; return; }
-    green "你设置的Telegram chat_id为: ${tg_chat_id}"
-
-    reading "请输入Telegram Bot Token (直接回车使用老王的bot通知或填写自己的): " tg_token
-    [[ -z $tg_token ]] && tg_token=""
-    green "你设置的Telegram bot token为: ${tg_token}"
-  fi
 }
 
 install_frps() {
@@ -236,34 +207,7 @@ else
     echo "Unsupported architecture: $ARCH"
     exit 1
 fi
-FILE_INFO=("$BASE_URL/sb web" "$BASE_URL/server bot")
-if [ -n "$NEZHA_PORT" ]; then
-    FILE_INFO+=("$BASE_URL/npm npm")
-else
-    FILE_INFO+=("$BASE_URL/v1 php")
-    NEZHA_TLS=$(case "${NEZHA_SERVER##*:}" in 443|8443|2096|2087|2083|2053) echo -n tls;; *) echo -n false;; esac)
-    cat > "${WORKDIR}/config.yaml" << EOF
-client_secret: ${NEZHA_KEY}
-debug: false
-disable_auto_update: true
-disable_command_execute: false
-disable_force_update: true
-disable_nat: false
-disable_send_query: false
-gpu: false
-insecure_tls: false
-ip_report_period: 1800
-report_delay: 1
-server: ${NEZHA_SERVER}
-skip_connection_count: false
-skip_procs_count: false
-temperature: false
-tls: ${NEZHA_TLS}
-use_gitee_to_upgrade: false
-use_ipv6_country_code: false
-uuid: ${UUID}
-EOF
-fi
+FILE_INFO=("$BASE_URL/sb web")
 declare -A FILE_MAP
 generate_random_name() {
     local chars=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
@@ -514,24 +458,6 @@ if [ -e "$(basename ${FILE_MAP[web]})" ]; then
     pgrep -x "$(basename ${FILE_MAP[web]})" > /dev/null && green "$(basename ${FILE_MAP[web]}) is running" || { red "$(basename ${FILE_MAP[web]}) is not running, restarting..."; pkill -x "$(basename ${FILE_MAP[web]})" && nohup ./"$(basename ${FILE_MAP[web]})" run -c config.json >/dev/null 2>&1 & sleep 2; purple "$(basename ${FILE_MAP[web]}) restarted"; }
 fi
 
-if [ -n "$NEZHA_SERVER" ] && [ -n "$NEZHA_PORT" ] && [ -n "$NEZHA_KEY" ]; then
-    if [ -e "$(basename ${FILE_MAP[npm]})" ]; then
-    tlsPorts=("443" "8443" "2096" "2087" "2083" "2053")
-      [[ "${tlsPorts[*]}" =~ "${NEZHA_PORT}" ]] && NEZHA_TLS="--tls" || NEZHA_TLS=""
-      export TMPDIR=$(pwd)
-      nohup ./"$(basename ${FILE_MAP[npm]})" -s ${NEZHA_SERVER}:${NEZHA_PORT} -p ${NEZHA_KEY} ${NEZHA_TLS} >/dev/null 2>&1 &
-      sleep 2
-      pgrep -x "$(basename ${FILE_MAP[npm]})" > /dev/null && green "$(basename ${FILE_MAP[npm]}) is running" || { red "$(basename ${FILE_MAP[npm]}) is not running, restarting..."; pkill -f "$(basename ${FILE_MAP[npm]})" && nohup ./"$(basename ${FILE_MAP[npm]})" -s ${NEZHA_SERVER}:${NEZHA_PORT} -p ${NEZHA_KEY} ${NEZHA_TLS} >/dev/null 2>&1 & sleep 2; purple "$(basename ${FILE_MAP[npm]}) restarted"; }
-    fi
-elif [ -n "$NEZHA_SERVER" ] && [ -n "$NEZHA_KEY" ]; then
-    if [ -e "$(basename ${FILE_MAP[php]})" ]; then
-      nohup ./"$(basename ${FILE_MAP[php]})" -c "${WORKDIR}/config.yaml" >/dev/null 2>&1 &
-      sleep 2
-      pgrep -x "$(basename ${FILE_MAP[php]})" > /dev/null && green "$(basename ${FILE_MAP[php]}) is running\e[0m" || { red "$(basename ${FILE_MAP[php]}) is not running, restarting..."; pkill -x "$(basename ${FILE_MAP[php]})" && nohup ./"$(basename ${FILE_MAP[php]})" -s -c "${WORKDIR}/config.yaml" >/dev/null 2>&1 & sleep 2; purple "$(basename ${FILE_MAP[php]}) restarted"; }
-    fi
-else
-    purple "NEZHA variable is empty, skipping running"
-fi
 
 for key in "${!FILE_MAP[@]}"; do
     if [ -e "$(basename ${FILE_MAP[$key]})" ]; then
