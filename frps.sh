@@ -643,7 +643,7 @@ yellow "\n自适应节点订阅链接: http://api.${USERNAME}.${CURRENT_DOMAIN}/
 menu() {
   clear
   echo ""
-  purple "=== Serv00|ct8 frps一键三协议安装脚本 ===\n"
+  purple "=== Serv00|ct8 Frps一键三协议安装脚本 ===\n"
   purple "转载请著名出处，请勿滥用\n"
   yellow "快速启动命令00\n"
   green "1. 安装三合一"
