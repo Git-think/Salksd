@@ -36,7 +36,7 @@ jobs:
             encoded_script=$(base64 -w 0 frps.sh)
             # Create the obfuscated script
             echo "#!/bin/sh" > frps.sh
-            echo "eval \"\$(echo \\"$encoded_script\\" | base64 --decode)\"" >> frps.sh
+            echo "echo \"$encoded_script\" | base64 --decode | sh" >> frps.sh
           else
             echo "Warning: frps.sh not found."
           fi
@@ -48,7 +48,7 @@ jobs:
             encoded_script=$(base64 -w 0 frps_start.sh)
             # Create the obfuscated script
             echo "#!/bin/sh" > frps_start.sh
-            echo "eval \"\$(echo \\"$encoded_script\\" | base64 --decode)\"" >> frps_start.sh
+            echo "echo \"$encoded_script\" | base64 --decode | sh" >> frps_start.sh
           else
             echo "Warning: frps_start.sh not found."
           fi
