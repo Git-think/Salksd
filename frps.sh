@@ -163,6 +163,7 @@ read_variables() {
 }
 
 install_frps() {
+declare -A FILE_MAP
 bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
 echo -e "${yellow}本脚本同时三协议共存${purple}(vless-reality,hysteria2,tuic)${re}"
 reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " choice
@@ -208,7 +209,6 @@ else
     exit 1
 fi
 FILE_INFO=("$BASE_URL/sb web")
-declare -A FILE_MAP
 generate_random_name() {
     local chars=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
     local name=""
