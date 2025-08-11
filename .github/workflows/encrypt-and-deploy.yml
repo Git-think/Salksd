@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - frps
-  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -73,11 +72,11 @@ jobs:
           fi
 
           # Copy the obfuscated frps-start.sh
-          if [ -f "frps_source/frps-start.sh" ]; then
-            cp frps_source/frps-start.sh main_dest/frps-start.sh
-            echo "frps-start.sh copied."
+          if [ -f "frps_source/frps_start.sh" ]; then
+            cp frps_source/frps_start.sh main_dest/frps_start.sh
+            echo "frps_start.sh copied."
           else
-            echo "Warning: frps-start.sh not found."
+            echo "Warning: frps_start.sh not found."
           fi
 
       # Step 5: Commit the changes and push to the 'main' branch
