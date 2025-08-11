@@ -102,19 +102,37 @@ generate_config_file() {
     "level": "info",
     "timestamp": true
   },
+  "dns": {
+    "servers": [
+      {
+        "address": "8.8.8.8",
+        "address_resolver": "local"
+      },
+      {
+        "tag": "local",
+        "address": "local"
+      }
+    ]
+  },
   "inbounds": [
     {
        "tag": "hysteria-in",
        "type": "hysteria2",
        "listen": "$available_ip",
        "listen_port": $HY2_PORT,
-       "users": [ { "password": "$UUID" } ],
-       "masquerade": "https://bing.com",
-       "tls": {
-           "enabled": true,
-           "alpn": [ "h3" ],
-           "certificate_path": "cert.pem",
-           "key_path": "private.key"
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://bing.com",
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
         }
     },
     {
@@ -122,15 +140,25 @@ generate_config_file() {
         "type": "vless",
         "listen": "$available_ip",
         "listen_port": $VLESS_PORT,
-        "users": [ { "uuid": "$UUID", "flow": "xtls-rprx-vision" } ],
+        "users": [
+            {
+              "uuid": "$UUID",
+              "flow": "xtls-rprx-vision"
+            }
+        ],
         "tls": {
             "enabled": true,
             "server_name": "$SNI",
             "reality": {
                 "enabled": true,
-                "handshake": { "server": "$SNI", "server_port": 443 },
+                "handshake": {
+                    "server": "$SNI",
+                    "server_port": 443
+                },
                 "private_key": "$private_key",
-                "short_id": [ "" ]
+                "short_id": [
+                  ""
+                ]
             }
         }
     },
@@ -139,11 +167,18 @@ generate_config_file() {
       "type": "tuic",
       "listen": "$available_ip",
       "listen_port": $TUIC_PORT,
-      "users": [ { "uuid": "$UUID", "password": "admin" } ],
+      "users": [
+        {
+          "uuid": "$UUID",
+          "password": "admin"
+        }
+      ],
       "congestion_control": "bbr",
       "tls": {
         "enabled": true,
-        "alpn": [ "h3" ],
+        "alpn": [
+          "h3"
+        ],
         "certificate_path": "cert.pem",
         "key_path": "private.key"
       }
