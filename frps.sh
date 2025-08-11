@@ -689,7 +689,7 @@ cat $FILE_PATH/list.txt
 [[ "$PROXYIP" == "true" ]] && purple "\n你的ProxyIP为: $available_ip:$VLESS_PORT"
 generate_sub_link
 install_keepalive
-rm -rf config.json sb.log core fake_useragent_0.2.0.json
+rm -rf config.json sb.log core fake_useragent_0.2.0.json private.key cert.pem
 quick_command
 green "Running done!\n"
 }
