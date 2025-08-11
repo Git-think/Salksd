@@ -1,4 +1,4 @@
-## Serv00|CT8 Frps一键三协议安装脚本vless-reality|hy2|tuic5
+## Serv00|CT8 一键重置
 ```
 bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps.sh)
 ```
