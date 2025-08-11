@@ -207,7 +207,6 @@ while true; do
 
     # 1. Load config. If it fails, we can't proceed.
     if ! load_config; then
-        sleep 300
         continue
     fi
     
@@ -216,7 +215,6 @@ while true; do
     if [ ! -f "$FRPS_EXEC" ]; then
         if ! download_frps_binary; then
             log_message "Will retry download in 5 minutes."
-            sleep 300
             continue
         fi
     fi
