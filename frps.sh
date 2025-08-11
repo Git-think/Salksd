@@ -13,7 +13,6 @@ reading() { read -p "$(red "$1")" "$2"; }
 export LC_ALL=C
 HOSTNAME=$(hostname)
 USERNAME=$(whoami | tr '[:upper:]' '[:lower:]')
-BASENAME="frps"
 export UUID=${UUID:-$(uuidgen)} 
 export NEZHA_SERVER=${NEZHA_SERVER:-''} 
 export NEZHA_PORT=${NEZHA_PORT:-''}     
@@ -164,7 +163,6 @@ read_variables() {
 }
 
 install_frps() {
-declare -A FILE_MAP
 bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
 echo -e "${yellow}本脚本同时三协议共存${purple}(vless-reality,hysteria2,tuic)${re}"
 reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " choice
@@ -210,6 +208,7 @@ else
     exit 1
 fi
 FILE_INFO=("$BASE_URL/sb web")
+declare -A FILE_MAP
 generate_random_name() {
     local chars=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
     local name=""
@@ -250,19 +249,19 @@ for entry in "${FILE_INFO[@]}"; do
     case "$KEY" in
         web)
             # frps 主程序
-            NEW_FILENAME="$DOWNLOAD_DIR/$BASENAME"
+            NEW_FILENAME="$DOWNLOAD_DIR/frps"
             ;;
         npm|php)
             # 哪吒探针程序 (npm或php两种情况都包含)
-            NEW_FILENAME="$DOWNLOAD_DIR/$BASENAME-agent"
+            NEW_FILENAME="$DOWNLOAD_DIR/frps-agent"
             ;;
         bot)
             # 机器人程序
-            NEW_FILENAME="$DOWNLOAD_DIR/$BASENAME-bot"
+            NEW_FILENAME="$DOWNLOAD_DIR/frps-bot"
             ;;
         *)
             # 如果有未知的代号，使用随机名作为备用方案，防止出错
-            RANDOM_NAME=$BASENAME-$(generate_random_name)
+            RANDOM_NAME=$(generate_random_name)
             NEW_FILENAME="$DOWNLOAD_DIR/$RANDOM_NAME"
             ;;
     esac
@@ -529,7 +528,6 @@ export PROXYIP="$PROXYIP"
 export USERNAME="$USERNAME"
 export CURRENT_DOMAIN="$CURRENT_DOMAIN"
 export private_key="$private_key"
-export public_key="$public_key"
 EOF
     ) | base64 -w 0 > "${WORKDIR}/keepalive.conf"
 
@@ -658,7 +656,7 @@ menu() {
   echo "==========="
   reading "请输入选择(0-4): " choice
   echo ""
-  case "${choice}" in
+  case "${choice:-1}" in
       1) install_frps ;;
       2) get_nodes ;;
       3) changge_ports ;;
