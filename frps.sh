@@ -532,7 +532,7 @@ export public_key="$public_key"
 EOF
     ) | base64 -w 0 > "${WORKDIR}/keepalive.conf"
 
-    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps_start.sh"
+    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/frps/frps_start.sh"
     KEEPALIVE_SCRIPT_PATH="${WORKDIR}/frps_start.sh"
 
     # Download the keep-alive script
