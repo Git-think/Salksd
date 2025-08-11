@@ -1,11 +1,7 @@
 #!/bin/bash
 
 # Get the directory where the script is located and cd into it
-case $0 in
-  /*) WORKDIR_PATH=$(dirname "$0") ;;
-  */*) WORKDIR_PATH=$(dirname "$0") ;;
-  *) WORKDIR_PATH=$(pwd) ;;
-esac
+WORKDIR_PATH=$(cd "$(dirname "$0")" && pwd)
 cd "$WORKDIR_PATH" || { echo "FATAL: Cannot cd to $WORKDIR_PATH"; exit 1; }
 
 LOG_FILE="./keepalive.log"
