@@ -3,7 +3,7 @@
 # It's designed to be run via: curl -Ls URL | bash
 
 set -e
-GZEXE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/main/frps.sh"
+GZEXE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/main/install.sh"
 
 # --- Main Logic ---
 # Function to perform cleanup.
