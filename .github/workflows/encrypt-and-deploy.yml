@@ -42,16 +42,16 @@ jobs:
           # fi
 
           # Obfuscate frps_start.sh
-          if [ -f "frps_start.sh" ]; then
-            echo "Obfuscating frps_start.sh..."
-            # Base64 encode the script
-            encoded_script=$(base64 -w 0 frps_start.sh)
-            # Create the obfuscated script
-            echo "#!/bin/sh" > frps_start.sh
-            echo "echo \"$encoded_script\" | base64 --decode | bash" >> frps_start.sh
-          else
-            echo "Warning: frps_start.sh not found."
-          fi
+          # if [ -f "frps_start.sh" ]; then
+          #   echo "Obfuscating frps_start.sh..."
+          #   # Base64 encode the script
+          #   encoded_script=$(base64 -w 0 frps_start.sh)
+          #   # Create the obfuscated script
+          #   echo "#!/bin/sh" > frps_start.sh
+          #   echo "echo \"$encoded_script\" | base64 --decode | bash" >> frps_start.sh
+          # else
+          #   echo "Warning: frps_start.sh not found."
+          # fi
 
       # Step 3: Checkout the 'main' branch to a separate directory
       - name: Checkout main branch (destination)
