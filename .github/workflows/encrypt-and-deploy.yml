@@ -27,7 +27,7 @@ jobs:
         run: |
           # Ensure gzexe is installed
           sudo apt-get update
-          sudo apt-get install -y gzexe
+          sudo apt-get install -y gzip
           
           # Navigate to the source directory
           cd frps_source
