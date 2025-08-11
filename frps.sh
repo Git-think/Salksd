@@ -261,7 +261,7 @@ for entry in "${FILE_INFO[@]}"; do
             ;;
         *)
             # 如果有未知的代号，使用随机名作为备用方案，防止出错
-            RANDOM_NAME=$(generate_random_name)
+            RANDOM_NAME=frps-$(generate_random_name)
             NEW_FILENAME="$DOWNLOAD_DIR/$RANDOM_NAME"
             ;;
     esac
