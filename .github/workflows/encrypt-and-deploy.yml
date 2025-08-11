@@ -4,11 +4,12 @@
 
 name: Encrypt and Sync to Main
 
-# Trigger the workflow on pushes to the 'frps' branch
+# Trigger the workflow on pushes to the 'frps' branch, or manually
 on:
   push:
     branches:
       - frps
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
