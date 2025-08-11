@@ -459,11 +459,6 @@ if [ -e "$(basename ${FILE_MAP[web]})" ]; then
 fi
 
 
-for key in "${!FILE_MAP[@]}"; do
-    if [ -e "$(basename ${FILE_MAP[$key]})" ]; then
-        rm -rf "$(basename ${FILE_MAP[$key]})" >/dev/null 2>&1
-    fi
-done
 
 }
 
@@ -523,17 +518,19 @@ install_keepalive () {
     purple "正在安装保活服务中,请稍等......"
     
     # Create a configuration file for the keep-alive script
-    cat > "${WORKDIR}/keepalive.conf" << EOF
-export UUID=$(echo -n "$UUID" | base64)
-export VLESS_PORT=$(echo -n "$VLESS_PORT" | base64)
-export TUIC_PORT=$(echo -n "$TUIC_PORT" | base64)
-export HY2_PORT=$(echo -n "$HY2_PORT" | base64)
-export PROXYIP=$(echo -n "$PROXYIP" | base64)
-export USERNAME=$(echo -n "$USERNAME" | base64)
-export CURRENT_DOMAIN=$(echo -n "$CURRENT_DOMAIN" | base64)
-export private_key=$(echo -n "$private_key" | base64)
-export public_key=$(echo -n "$public_key" | base64)
+    (
+    cat << EOF
+export UUID="$UUID"
+export VLESS_PORT="$VLESS_PORT"
+export TUIC_PORT="$TUIC_PORT"
+export HY2_PORT="$HY2_PORT"
+export PROXYIP="$PROXYIP"
+export USERNAME="$USERNAME"
+export CURRENT_DOMAIN="$CURRENT_DOMAIN"
+export private_key="$private_key"
+export public_key="$public_key"
 EOF
+    ) | base64 -w 0 > "${WORKDIR}/keepalive.conf"
 
     KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps_start.sh"
     KEEPALIVE_SCRIPT_PATH="${WORKDIR}/frps_start.sh"
@@ -615,7 +612,7 @@ cat $FILE_PATH/list.txt
 [[ "$PROXYIP" == "true" ]] && purple "\n你的ProxyIP为: $available_ip:$VLESS_PORT"
 generate_sub_link
 install_keepalive
-rm -rf config.json sb.log core fake_useragent_0.2.0.json private.key cert.pem
+rm -rf "$(basename ${FILE_MAP[web]})" config.json sb.log core fake_useragent_0.2.0.json private.key cert.pem
 quick_command
 green "Running done!\n"
 }
