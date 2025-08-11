@@ -210,26 +210,6 @@ reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " cho
   esac
 }
 
-uninstall_frps() {
-  reading "\n确定要卸载吗？【y/n】: " choice
-    case "$choice" in
-        [Yy])
-	          bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
-       	    rm -rf $WORKDIR && find ${FILE_PATH} -mindepth 1 ! -name 'index.html' -exec rm -rf {} +
-       	    pkill -f "frps_start.sh" >/dev/null 2>&1
-       	    devil www del api.${USERNAME}.${CURRENT_DOMAIN} >/dev/null 2>&1
-       	    rm -rf ${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN} >/dev/null 2>&1
-       	    rm -rf "${HOME}/bin/00" >/dev/null 2>&1
-       	    [ -d "${HOME}/bin" ] && [ -z "$(ls -A "${HOME}/bin")" ] && rmdir "${HOME}/bin"
-       	    sed -i '/export PATH="\$HOME\/bin:\$PATH"/d' "${HOME}/.bashrc" >/dev/null 2>&1
-            source "${HOME}/.bashrc"
-	          clear
-       	    green "frps三合一已完全卸载"
-          ;;
-        [Nn]) exit 0 ;;
-    	  *) red "无效的选择，请输入y或n" && menu ;;
-    esac
-}
 
 reset_system() {
 reading "\n确定重置系统吗吗？【y/n】: " choice
@@ -726,14 +706,6 @@ quick_command() {
 green "快捷指令00创建成功,下次运行输入00快速进入菜单\n"
 }
 
-get_url_info() {
-  if pgrep -f "frps_start.sh" > /dev/null; then
-    green "保活服务正在运行中。"
-    purple "保活日志文件位于: ${WORKDIR}/keepalive.log"
-  else
-    red "尚未安装或运行自动保活服务\n" && sleep 2 && menu
-  fi
-}
 
 get_nodes(){
 cat ${FILE_PATH}/list.txt
@@ -745,34 +717,28 @@ yellow "\n自适应节点订阅链接: https://api.${USERNAME}.${CURRENT_DOMAIN}
 menu() {
   clear
   echo ""
-  purple "=== Serv00|ct8 frps一键三协议安装脚本法 ===\n"
+  purple "=== Serv00|ct8 frps一键三协议安装脚本 ===\n"
   purple "转载请著名出处，请勿滥用\n"
   yellow "快速启动命令00\n"
   green "1. 安装三合一"
   echo  "==============="
-  red "2. 卸载三合一"
+  green "2. 查看节点信息"
   echo  "==============="
-  green "3. 查看节点信息"
+  yellow "3. 更换节点端口"
   echo  "==============="
-  green "4. 查看保活链接"
-  echo  "==============="
-  yellow "5. 更换节点端口"
-  echo  "==============="
-  yellow "6. 初始化系统"
+  yellow "4. 初始化系统"
   echo  "==============="
   red "0. 退出脚本"
   echo "==========="
-  reading "请输入选择(0-6): " choice
+  reading "请输入选择(0-4): " choice
   echo ""
   case "${choice}" in
       1) install_frps ;;
-      2) uninstall_frps ;; 
-      3) get_nodes ;; 
-      4) get_url_info ;;
-      5) changge_ports ;;
-      6) reset_system ;;
+      2) get_nodes ;;
+      3) changge_ports ;;
+      4) reset_system ;;
       0) exit 0 ;;
-      *) red "无效的选项，请输入 0 到 6" ;;
+      *) red "无效的选项，请输入 0 到 4" ;;
   esac
 }
 menu
