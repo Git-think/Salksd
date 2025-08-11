@@ -66,8 +66,8 @@ jobs:
           echo "Copying scripts..."
           # Copy the obfuscated frps.sh
           if [ -f "frps_source/frps.sh" ]; then
-            cp frps_source/frps.sh main_dest/frps.sh
-            echo "frps.sh copied."
+            # cp frps_source/frps.sh main_dest/frps.sh
+            # echo "frps.sh copied."
           else
             echo "Warning: frps.sh not found."
           fi
