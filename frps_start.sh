@@ -80,10 +80,7 @@ download_frps_binary() {
 generate_config_file() {
     log_message "config.json not found. Generating..."
     
-    # Generate keys and certificates
-    output=$($FRPS_EXEC generate reality-keypair)
-    private_key=$(echo "${output}" | awk '/PrivateKey:/ {print $2}')
-    public_key=$(echo "${output}" | awk '/PublicKey:/ {print $2}')
+    # Generate certificates
     
     [[ "$PROXYIP" == "true" ]] && SNI="time.is" || SNI="www.cerebrium.ai"
     
@@ -156,6 +153,7 @@ generate_config_file() {
                     "server_port": 443
                 },
                 "private_key": "$private_key",
+                "public_key": "$public_key",
                 "short_id": [
                   ""
                 ]
