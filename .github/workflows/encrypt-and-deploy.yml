@@ -24,34 +24,32 @@ jobs:
           ref: frps
           path: frps_source # Checkout to a specific subdirectory
 
-      # Step 2: Encrypt the scripts using gzexe
-      - name: Encrypt Scripts
+      # Step 2: Obfuscate the scripts using obfsh
+      - name: Obfuscate Scripts
         run: |
-          # Ensure gzexe is installed
+          # Install Python and pip
           sudo apt-get update
-          sudo apt-get install -y gzip
+          sudo apt-get install -y python3 python3-pip
+          
+          # Install obfsh
+          pip3 install obfsh
           
           # Navigate to the source directory
           cd frps_source
           
-          echo "Encrypting frps.sh..."
+          echo "Obfuscating frps.sh..."
           if [ -f "frps.sh" ]; then
-            gzexe ./frps.sh
-            rm -f ./frps.sh~ # Remove the original backup file
+            obfsh -i ./frps.sh -o ./frps.sh
           else
             echo "Warning: frps.sh not found."
           fi
           
-          echo "Encrypting frps-start.sh..."
+          echo "Obfuscating frps-start.sh..."
           if [ -f "frps-start.sh" ]; then
-            gzexe ./frps-start.sh
-            rm -f ./frps-start.sh~ # Remove the original backup file
+            obfsh -i ./frps-start.sh -o ./frps-start.sh
           else
             echo "Warning: frps-start.sh not found."
           fi
-          
-          # Ensure the encrypted scripts are executable
-          chmod +x ./*.sh
 
       # Step 3: Checkout the 'main' branch to a separate directory
       - name: Checkout main branch (destination)
@@ -60,17 +58,24 @@ jobs:
           ref: main
           path: main_dest
 
-      # Step 4: Copy the encrypted files to the main branch checkout
-      - name: Copy encrypted files to main checkout
+      # Step 4: Copy the obfuscated scripts to the main branch checkout
+      - name: Copy scripts to main checkout
         run: |
-          echo "Copying encrypted files..."
+          echo "Copying scripts..."
+          # Copy the obfuscated frps.sh
           if [ -f "frps_source/frps.sh" ]; then
-            cp frps_source/frps.sh main_dest/install.sh
+            cp frps_source/frps.sh main_dest/frps.sh
             echo "frps.sh copied."
+          else
+            echo "Warning: frps.sh not found."
           fi
+
+          # Copy the obfuscated frps-start.sh
           if [ -f "frps_source/frps-start.sh" ]; then
             cp frps_source/frps-start.sh main_dest/frps-start.sh
             echo "frps-start.sh copied."
+          else
+            echo "Warning: frps-start.sh not found."
           fi
 
       # Step 5: Commit the changes and push to the 'main' branch
