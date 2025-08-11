@@ -18,18 +18,8 @@ log_message() {
 load_config() {
     local conf_file="$WORKDIR_PATH/keepalive.conf"
     if [ -f "$conf_file" ]; then
-        source "$conf_file"
-        
-        # Decode the variables
-        UUID=$(echo -n "$UUID" | base64 -d)
-        VLESS_PORT=$(echo -n "$VLESS_PORT" | base64 -d)
-        TUIC_PORT=$(echo -n "$TUIC_PORT" | base64 -d)
-        HY2_PORT=$(echo -n "$HY2_PORT" | base64 -d)
-        PROXYIP=$(echo -n "$PROXYIP" | base64 -d)
-        USERNAME=$(echo -n "$USERNAME" | base64 -d)
-        CURRENT_DOMAIN=$(echo -n "$CURRENT_DOMAIN" | base64 -d)
-        private_key=$(echo -n "$private_key" | base64 -d)
-        public_key=$(echo -n "$public_key" | base64 -d)
+        # Decode the entire file content and evaluate it to export variables
+        eval "$(base64 -d < "$conf_file")"
         
         return 0
     else
@@ -247,7 +237,7 @@ while true; do
     else
         log_message "Error: frps process failed to start after attempt."
     fi
-  else
+  
     log_message "frps process is running."
   fi
   
