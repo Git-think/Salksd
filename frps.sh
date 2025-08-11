@@ -13,6 +13,7 @@ reading() { read -p "$(red "$1")" "$2"; }
 export LC_ALL=C
 HOSTNAME=$(hostname)
 USERNAME=$(whoami | tr '[:upper:]' '[:lower:]')
+BASENAME="frps"
 export UUID=${UUID:-$(uuidgen)} 
 export NEZHA_SERVER=${NEZHA_SERVER:-''} 
 export NEZHA_PORT=${NEZHA_PORT:-''}     
@@ -163,6 +164,7 @@ read_variables() {
 }
 
 install_frps() {
+declare -A FILE_MAP
 bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
 echo -e "${yellow}本脚本同时三协议共存${purple}(vless-reality,hysteria2,tuic)${re}"
 reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " choice
@@ -208,7 +210,6 @@ else
     exit 1
 fi
 FILE_INFO=("$BASE_URL/sb web")
-declare -A FILE_MAP
 generate_random_name() {
     local chars=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
     local name=""
@@ -249,19 +250,19 @@ for entry in "${FILE_INFO[@]}"; do
     case "$KEY" in
         web)
             # frps 主程序
-            NEW_FILENAME="$DOWNLOAD_DIR/frps"
+            NEW_FILENAME="$DOWNLOAD_DIR/$BASENAME"
             ;;
         npm|php)
             # 哪吒探针程序 (npm或php两种情况都包含)
-            NEW_FILENAME="$DOWNLOAD_DIR/frps-agent"
+            NEW_FILENAME="$DOWNLOAD_DIR/$BASENAME-agent"
             ;;
         bot)
             # 机器人程序
-            NEW_FILENAME="$DOWNLOAD_DIR/frps-bot"
+            NEW_FILENAME="$DOWNLOAD_DIR/$BASENAME-bot"
             ;;
         *)
             # 如果有未知的代号，使用随机名作为备用方案，防止出错
-            RANDOM_NAME=frps-$(generate_random_name)
+            RANDOM_NAME=$BASENAME-$(generate_random_name)
             NEW_FILENAME="$DOWNLOAD_DIR/$RANDOM_NAME"
             ;;
     esac
