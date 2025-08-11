@@ -1,2 +1,670 @@
-#!/bin/sh
-echo "IyEvYmluL2Jhc2gKCnJlPSJcMDMzWzBtIgpyZWQ9IlwwMzNbMTs5MW0iCmdyZWVuPSJcZVsxOzMybSIKeWVsbG93PSJcZVsxOzMzbSIKcHVycGxlPSJcZVsxOzM1bSIKcmVkKCkgeyBlY2hvIC1lICJcZVsxOzkxbSQxXDAzM1swbSI7IH0KZ3JlZW4oKSB7IGVjaG8gLWUgIlxlWzE7MzJtJDFcMDMzWzBtIjsgfQp5ZWxsb3coKSB7IGVjaG8gLWUgIlxlWzE7MzNtJDFcMDMzWzBtIjsgfQpwdXJwbGUoKSB7IGVjaG8gLWUgIlxlWzE7MzVtJDFcMDMzWzBtIjsgfQpyZWFkaW5nKCkgeyByZWFkIC1wICIkKHJlZCAiJDEiKSIgIiQyIjsgfQpleHBvcnQgTENfQUxMPUMKSE9TVE5BTUU9JChob3N0bmFtZSkKVVNFUk5BTUU9JCh3aG9hbWkgfCB0ciAnWzp1cHBlcjpdJyAnWzpsb3dlcjpdJykKQkFTRU5BTUU9ImZycHMiCmV4cG9ydCBVVUlEPSR7VVVJRDotJCh1dWlkZ2VuKX0gCmV4cG9ydCBORVpIQV9TRVJWRVI9JHtORVpIQV9TRVJWRVI6LScnfSAKZXhwb3J0IE5FWkhBX1BPUlQ9JHtORVpIQV9QT1JUOi0nJ30gICAgIApleHBvcnQgTkVaSEFfS0VZPSR7TkVaSEFfS0VZOi0nJ30gCmV4cG9ydCBTVUJfVE9LRU49JHtTVUJfVE9LRU46LSR7VVVJRDowOjh9fQpleHBvcnQgVVBMT0FEX1VSTD0ke1VQTE9BRF9VUkw6LScnfSAgIyDorqLpmIXoh6rliqjmt7vliqDliLDmsYfogZrorqLpmIXlmajvvIzpnIDopoHlhYjpg6jnvbJNZXJnZS1zdWLpobnnm64s546v5aKD5Y+Y6YeP5aGr5YaZ6YOo572y5ZCO55qE6aaW6aG15Zyw5Z2ALOS+i+WmgjogVVBMT0FEX1VSTD1odHRwczovL21lcmdlLnNlcnYwMC5uZXQKCmlmIFtbICIkSE9TVE5BTUUiID1+IGN0OCBdXTsgdGhlbgogICAgQ1VSUkVOVF9ET01BSU49ImN0OC5wbCIKZWxpZiBbWyAiJEhPU1ROQU1FIiA9fiB1c2VydW5vIF1dOyB0aGVuCiAgICBDVVJSRU5UX0RPTUFJTj0idXNlcnVuby5jb20iCmVsc2UKICAgIENVUlJFTlRfRE9NQUlOPSJzZXJ2MDAubmV0IgpmaQpXT1JLRElSPSIke0hPTUV9L2RvbWFpbnMvYXBpLiR7VVNFUk5BTUV9LiR7Q1VSUkVOVF9ET01BSU59L2xvZ3MiCkZJTEVfUEFUSD0iJHtIT01FfS9kb21haW5zL2FwaS4ke1VTRVJOQU1FfS4ke0NVUlJFTlRfRE9NQUlOfS9wdWJsaWNfaHRtbCIKcm0gLXJmICIkV09SS0RJUiIgJiYgbWtkaXIgLXAgIiRXT1JLRElSIiAiJEZJTEVfUEFUSCIgJiYgY2htb2QgNzc3ICIkV09SS0RJUiIgIiRGSUxFX1BBVEgiID4vZGV2L251bGwgMj4mMQpjb21tYW5kIC12IGN1cmwgJj4vZGV2L251bGwgJiYgQ09NTUFORD0iY3VybCAtc28iIHx8IGNvbW1hbmQgLXYgd2dldCAmPi9kZXYvbnVsbCAmJiBDT01NQU5EPSJ3Z2V0IC1xTyIgfHwgeyByZWQgIkVycm9yOiBuZWl0aGVyIGN1cmwgbm9yIHdnZXQgZm91bmQsIHBsZWFzZSBpbnN0YWxsIG9uZSBvZiB0aGVtLiIgPiYyOyBleGl0IDE7IH0KCmNoZWNrX3BvcnQgKCkgewpwb3J0X2xpc3Q9JChkZXZpbCBwb3J0IGxpc3QpCnRjcF9wb3J0cz0kKGVjaG8gIiRwb3J0X2xpc3QiIHwgZ3JlcCAtYyAidGNwIikKdWRwX3BvcnRzPSQoZWNobyAiJHBvcnRfbGlzdCIgfCBncmVwIC1jICJ1ZHAiKQoKaWYgW1sgJHRjcF9wb3J0cyAtbmUgMSB8fCAkdWRwX3BvcnRzIC1uZSAyIF1dOyB0aGVuCiAgICByZWQgIuerr+WPo+inhOWImeS4jeespuWQiOimgeaxgu+8jOato+WcqOiwg+aVtC4uLiIKCiAgICBpZiBbWyAkdGNwX3BvcnRzIC1ndCAxIF1dOyB0aGVuCiAgICAgICAgdGNwX3RvX2RlbGV0ZT0kKCh0Y3BfcG9ydHMgLSAxKSkKICAgICAgICBlY2hvICIkcG9ydF9saXN0IiB8IGF3ayAnL3RjcC8ge3ByaW50ICQxLCAkMn0nIHwgaGVhZCAtbiAkdGNwX3RvX2RlbGV0ZSB8IHdoaWxlIHJlYWQgcG9ydCB0eXBlOyBkbwogICAgICAgICAgICBkZXZpbCBwb3J0IGRlbCAkdHlwZSAkcG9ydAogICAgICAgICAgICBncmVlbiAi5bey5Yig6ZmkVENQ56uv5Y+jOiAkcG9ydCIKICAgICAgICBkb25lCiAgICBmaQoKICAgIGlmIFtbICR1ZHBfcG9ydHMgLWd0IDIgXV07IHRoZW4KICAgICAgICB1ZHBfdG9fZGVsZXRlPSQoKHVkcF9wb3J0cyAtIDIpKQogICAgICAgIGVjaG8gIiRwb3J0X2xpc3QiIHwgYXdrICcvdWRwLyB7cHJpbnQgJDEsICQyfScgfCBoZWFkIC1uICR1ZHBfdG9fZGVsZXRlIHwgd2hpbGUgcmVhZCBwb3J0IHR5cGU7IGRvCiAgICAgICAgICAgIGRldmlsIHBvcnQgZGVsICR0eXBlICRwb3J0CiAgICAgICAgICAgIGdyZWVuICLlt7LliKDpmaRVRFDnq6/lj6M6ICRwb3J0IgogICAgICAgIGRvbmUKICAgIGZpCgogICAgaWYgW1sgJHRjcF9wb3J0cyAtbHQgMSBdXTsgdGhlbgogICAgICAgIHdoaWxlIHRydWU7IGRvCiAgICAgICAgICAgIHRjcF9wb3J0PSQoc2h1ZiAtaSAxMDAwMC02NTUzNSAtbiAxKSAKICAgICAgICAgICAgcmVzdWx0PSQoZGV2aWwgcG9ydCBhZGQgdGNwICR0Y3BfcG9ydCAyPiYxKQogICAgICAgICAgICBpZiBbWyAkcmVzdWx0ID09ICoiT2siKiBdXTsgdGhlbgogICAgICAgICAgICAgICAgZ3JlZW4gIuW3sua3u+WKoFRDUOerr+WPozogJHRjcF9wb3J0IgogICAgICAgICAgICAgICAgYnJlYWsKICAgICAgICAgICAgZWxzZQogICAgICAgICAgICAgICAgeWVsbG93ICLnq6/lj6MgJHRjcF9wb3J0IOS4jeWPr+eUqO+8jOWwneivleWFtuS7luerr+WPoy4uLiIKICAgICAgICAgICAgZmkKICAgICAgICBkb25lCiAgICBmaQoKICAgIGlmIFtbICR1ZHBfcG9ydHMgLWx0IDIgXV07IHRoZW4KICAgICAgICB1ZHBfcG9ydHNfdG9fYWRkPSQoKDIgLSB1ZHBfcG9ydHMpKQogICAgICAgIHVkcF9wb3J0c19hZGRlZD0wCiAgICAgICAgd2hpbGUgW1sgJHVkcF9wb3J0c19hZGRlZCAtbHQgJHVkcF9wb3J0c190b19hZGQgXV07IGRvCiAgICAgICAgICAgIHVkcF9wb3J0PSQoc2h1ZiAtaSAxMDAwMC02NTUzNSAtbiAxKSAKICAgICAgICAgICAgcmVzdWx0PSQoZGV2aWwgcG9ydCBhZGQgdWRwICR1ZHBfcG9ydCAyPiYxKQogICAgICAgICAgICBpZiBbWyAkcmVzdWx0ID09ICoiT2siKiBdXTsgdGhlbgogICAgICAgICAgICAgICAgZ3JlZW4gIuW3sua3u+WKoFVEUOerr+WPozogJHVkcF9wb3J0IgogICAgICAgICAgICAgICAgaWYgW1sgJHVkcF9wb3J0c19hZGRlZCAtZXEgMCBdXTsgdGhlbgogICAgICAgICAgICAgICAgICAgIHVkcF9wb3J0MT0kdWRwX3BvcnQKICAgICAgICAgICAgICAgIGVsc2UKICAgICAgICAgICAgICAgICAgICB1ZHBfcG9ydDI9JHVkcF9wb3J0CiAgICAgICAgICAgICAgICBmaQogICAgICAgICAgICAgICAgdWRwX3BvcnRzX2FkZGVkPSQoKHVkcF9wb3J0c19hZGRlZCArIDEpKQogICAgICAgICAgICBlbHNlCiAgICAgICAgICAgICAgICB5ZWxsb3cgIuerr+WPoyAkdWRwX3BvcnQg5LiN5Y+v55So77yM5bCd6K+V5YW25LuW56uv5Y+jLi4uIgogICAgICAgICAgICBmaQogICAgICAgIGRvbmUKICAgIGZpCiAgICBncmVlbiAi56uv5Y+j5bey6LCD5pW05a6M5oiQLOWwhuaWreW8gHNzaOi/nuaOpSzor7fph43mlrDov57mjqVzaGjph43mlrDmiafooYzohJrmnKwiCiAgICBxdWlja19jb21tYW5kCiAgICBkZXZpbCBiaW5leGVjIG9uID4vZGV2L251bGwgMj4mMQogICAga2lsbCAtOSAkKHBzIC1vIHBwaWQ9IC1wICQkKSA+L2Rldi9udWxsIDI+JjEKZWxzZQogICAgdGNwX3BvcnQ9JChlY2hvICIkcG9ydF9saXN0IiB8IGF3ayAnL3RjcC8ge3ByaW50ICQxfScpCiAgICB1ZHBfcG9ydHM9JChlY2hvICIkcG9ydF9saXN0IiB8IGF3ayAnL3VkcC8ge3ByaW50ICQxfScpCiAgICB1ZHBfcG9ydDE9JChlY2hvICIkdWRwX3BvcnRzIiB8IHNlZCAtbiAnMXAnKQogICAgdWRwX3BvcnQyPSQoZWNobyAiJHVkcF9wb3J0cyIgfCBzZWQgLW4gJzJwJykKZmkKcHVycGxlICJyZWFsaXR55L2/55So55qE56uv5Y+jOiAkdGNwX3BvcnQiCnB1cnBsZSAidHVpY+WSjGh5MuWIhuWIq+S9v+eUqOeahFVEUOerr+WPozogJHVkcF9wb3J0MSDlkowgJHVkcF9wb3J0MiIKZXhwb3J0IFZMRVNTX1BPUlQ9JHRjcF9wb3J0CmV4cG9ydCBUVUlDX1BPUlQ9JHVkcF9wb3J0MQpleHBvcnQgSFkyX1BPUlQ9JHVkcF9wb3J0Mgp9CgpjaGVja193ZWJzaXRlKCkgewpGVUxMX0RPTUFJTj0iYXBpLiR7VVNFUk5BTUV9LiR7Q1VSUkVOVF9ET01BSU59IgpDVVJSRU5UX1NJVEU9JChkZXZpbCB3d3cgbGlzdCB8IGF3ayAtdiBkb21haW49IiRGVUxMX0RPTUFJTiIgJyQxID09IGRvbWFpbiAmJiAkMiA9PSAicGhwIicpCmlmIFsgLW4gIiRDVVJSRU5UX1NJVEUiIF07IHRoZW4KICAgIGdyZWVuICLlt7LlrZjlnKggJHtGVUxMX0RPTUFJTn0g55qEUEhQ56uZ54K577yM5peg6ZyA5L+u5pS5IgplbHNlCiAgICBFWElTVF9TSVRFPSQoZGV2aWwgd3d3IGxpc3QgfCBhd2sgLXYgZG9tYWluPSIkRlVMTF9ET01BSU4iICckMSA9PSBkb21haW4nKQogICAgCiAgICBpZiBbIC1uICIkRVhJU1RfU0lURSIgXTsgdGhlbgogICAgICAgIGRldmlsIHd3dyBkZWwgIiRGVUxMX0RPTUFJTiIgPi9kZXYvbnVsbCAyPiYxCiAgICAgICAgZGV2aWwgd3d3IGFkZCAiJEZVTExfRE9NQUlOIiBwaHAgIiRIT01FL2RvbWFpbnMvJEZVTExfRE9NQUlOIiA+L2Rldi9udWxsIDI+JjEKICAgICAgICBncmVlbiAi5bey5Yig6Zmk5pen55qE56uZ54K55bm25re75Yqg5paw55qEcGhw56uZ54K5IgogICAgZWxzZQogICAgICAgIGRldmlsIHd3dyBhZGQgIiRGVUxMX0RPTUFJTiIgcGhwICIkSE9NRS9kb21haW5zLyRGVUxMX0RPTUFJTiIgPi9kZXYvbnVsbCAyPiYxCiAgICAgICAgZ3JlZW4gIuW3suWIm+W7uuaWsFBIUOermeeCuSAke0ZVTExfRE9NQUlOfSIKICAgIGZpCmZpCgppbmRleF91cmw9Imh0dHBzOi8vZ2l0aHViLmNvbS9lb29jZS9TaW5nLWJveC9yZWxlYXNlcy9kb3dubG9hZC8wMC9pbmRleC5odG1sIgpbIC1mICIke0ZJTEVfUEFUSH0vaW5kZXguaHRtbCIgXSB8fCAkQ09NTUFORCAiJHtGSUxFX1BBVEh9L2luZGV4Lmh0bWwiICIkaW5kZXhfdXJsIgp9CgpjaGFuZ2dlX3BvcnRzKCkgewpyZWFkaW5nICLlsIbliKDpmaTlhajpg6jnq6/lj6PnhLblkI7pmo/mnLrlvIDmlL4x5LiqdGNw56uv5Y+j5ZKMMuS4qnVkcOerr+WPoyznoa7lrprnu6fnu63lkJc/KOebtOaOpeWbnui9puWNs+ehruiupOabtOaNoinjgJB5L27jgJE6ICIgY2hvaWNlCgppZiBbWyAteiAiJGNob2ljZSIgfHwgIiRjaG9pY2UiID09ICJ5IiB8fCAiJGNob2ljZSIgPT0gIlkiIF1dOyB0aGVuCiAgICBkZXZpbCBwb3J0IGxpc3QgfCBncmVwIC1FICJeXHMqWzAtOV0rIiB8IHdoaWxlIHJlYWQgLXIgbGluZTsgZG8KICAgICAgICBwb3J0PSQoZWNobyAiJGxpbmUiIHwgYXdrICd7cHJpbnQgJDF9JykKICAgICAgICBwcm90bz0kKGVjaG8gIiRsaW5lIiB8IGF3ayAne3ByaW50ICQyfScpCgogICAgICAgIGlmIFtbICIkcHJvdG8iICE9ICJ0Y3AiICYmICIkcHJvdG8iICE9ICJ1ZHAiIF1dOyB0aGVuCiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgZmkKCiAgICAgICAgaWYgISBbWyAiJHBvcnQiID1+IF5bMC05XSskIF1dOyB0aGVuCiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgZmkKCiAgICAgICAgaWYgZGV2aWwgcG9ydCBkZWwgIiR7cHJvdG99IiAiJHtwb3J0fSIgPiAvZGV2L251bGwgMj4mMTsgdGhlbgogICAgICAgICAgICBncmVlbiAiUG9ydCAke3BvcnR9LyR7cHJvdG99IGhhcyBiZWVuIHJlbW92ZWQgc3VjY2Vzc2Z1bGx5IgogICAgICAgIGVsc2UKICAgICAgICAgICAgcmVkICJGYWlsZWQgdG8gcmVtb3ZlIHBvcnQgJHtwb3J0fS8ke3Byb3RvfSIKICAgICAgICBmaQogICAgZG9uZQogICAgY2hlY2tfcG9ydAplbHNlCiAgICBtZW51ICAKZmkKfQoKcmVhZF92YXJpYWJsZXMoKSB7CiAgcmVhZGluZyAi5piv5ZCm6ZyA6KaB5byA5ZCvUHJveHlfSVDlip/og73vvJ8o55u05o6l5Zue6L2m5YiZ5LiN5byA5ZCvKeOAkHkvbuOAkTogIiBQUk9YWUlQCiAgW1sgLXogJFBST1hZSVAgXV0gJiYgUFJPWFlJUD0iZmFsc2UiCiAgW1sgIiRQUk9YWUlQIiA9PSAieSIgfHwgIiRQUk9YWUlQIiA9PSAiWSIgXV0gJiYgUFJPWFlJUD0idHJ1ZSIKCn0KCmluc3RhbGxfZnJwcygpIHsKZGVjbGFyZSAtQSBGSUxFX01BUApiYXNoIC1jICdwcyBhdXggfCBncmVwICQod2hvYW1pKSB8IGdyZXAgLXYgInNzaGRcfGJhc2hcfGdyZXAiIHwgYXdrICJ7cHJpbnQgXCQyfSIgfCB4YXJncyAtciBraWxsIC05ID4vZGV2L251bGwgMj4mMScgPi9kZXYvbnVsbCAyPiYxCmVjaG8gLWUgIiR7eWVsbG93feacrOiEmuacrOWQjOaXtuS4ieWNj+iuruWFseWtmCR7cHVycGxlfSh2bGVzcy1yZWFsaXR5LGh5c3RlcmlhMix0dWljKSR7cmV9IgpyZWFkaW5nICJcbuehruWumue7p+e7reWuieijheWQl++8nyjnm7TmjqXlm57ovabljbPnoa7orqTlronoo4Up44CQeS9u44CROiAiIGNob2ljZQogIGNhc2UgIiR7Y2hvaWNlOi15fSIgaW4KICAgIFtZeV18IiIpCiAgICAJY2xlYXIKICAgICAgICBjZCAkV09SS0RJUgogICAgICAgIGNoZWNrX3BvcnQKICAgICAgICBjaGVja193ZWJzaXRlCiAgICAgICAgcmVhZF92YXJpYWJsZXMKICAgICAgICBkb3dubG9hZF9mcnBzCiAgICAgICAgZ2V0X2xpbmtzCiAgICAgIDs7CiAgICBbTm5dKSBleGl0IDAgOzsKICAgICopIHJlZCAi5peg5pWI55qE6YCJ5oupLOivt+i+k+WFpXnmiJZuIiAmJiBtZW51IDs7CiAgZXNhYwp9CgoKcmVzZXRfc3lzdGVtKCkgewpyZWFkaW5nICJcbuehruWumumHjee9ruezu+e7n+WQl+WQl++8n+OAkHkvbuOAkTogIiBjaG9pY2UKICBjYXNlICIkY2hvaWNlIiBpbgogICAgW1l5XSkgeWVsbG93ICJcbuWIneWni+WMluezu+e7n+S4rSzor7fnqI3lkI4uLi5cbiIKICAgICAgICAgIGJhc2ggLWMgJ3BzIGF1eCB8IGdyZXAgJCh3aG9hbWkpIHwgZ3JlcCAtdiAic3NoZFx8YmFzaFx8Z3JlcCIgfCBhd2sgIntwcmludCBcJDJ9IiB8IHhhcmdzIC1yIGtpbGwgLTkgPi9kZXYvbnVsbCAyPiYxJyA+L2Rldi9udWxsIDI+JjEKICAgICAgICAgIGZpbmQgIiR7SE9NRX0iIC1taW5kZXB0aCAxICEgLW5hbWUgImRvbWFpbnMiICEgLW5hbWUgIm1haWwiICEgLW5hbWUgInJlcG8iICEgLW5hbWUgImJhY2t1cHMiICEgLW5hbWUgIi4qIiAtZXhlYyBybSAtcmYge30gKyA+IC9kZXYvbnVsbCAyPiYxCiAgICAgICAgICBwa2lsbCAtZiAiZnJwc19zdGFydC5zaCIgPi9kZXYvbnVsbCAyPiYxCiAgICAgICAgICBkZXZpbCB3d3cgZGVsIGFwaS4ke1VTRVJOQU1FfS4ke0NVUlJFTlRfRE9NQUlOfSA+IC9kZXYvbnVsbCAyPiYxCiAgICAgICAgICBybSAtcmYgJEhPTUUvZG9tYWlucy9hcGkuJHtVU0VSTkFNRX0uJHtDVVJSRU5UX0RPTUFJTn0gPiAvZGV2L251bGwgMj4mMQogICAgICAgICAgZ3JlZW4gIlxu57O757uf5Yid5aeL5YyW5a6M5oiQIVxuIgogICAgICAgICA7OwogICAgICAgKikgbWVudSA7OwogIGVzYWMKfQoKZG93bmxvYWRfZnJwcygpIHsKQVJDSD0kKHVuYW1lIC1tKSAmJiBET1dOTE9BRF9ESVI9Ii4iICYmIG1rZGlyIC1wICIkRE9XTkxPQURfRElSIiAmJiBGSUxFX0lORk89KCkKaWYgWyAiJEFSQ0giID09ICJhcm0iIF0gfHwgWyAiJEFSQ0giID09ICJhcm02NCIgXSB8fCBbICIkQVJDSCIgPT0gImFhcmNoNjQiIF07IHRoZW4KICAgIEJBU0VfVVJMPSJodHRwczovL2dpdGh1Yi5jb20vZW9vY2UvdGVzdC9yZWxlYXNlcy9kb3dubG9hZC9mcmVlYnNkLWFybTY0IgplbGlmIFsgIiRBUkNIIiA9PSAiYW1kNjQiIF0gfHwgWyAiJEFSQ0giID09ICJ4ODZfNjQiIF0gfHwgWyAiJEFSQ0giID09ICJ4ODYiIF07IHRoZW4KICAgIEJBU0VfVVJMPSJodHRwczovL2dpdGh1Yi5jb20vZW9vY2UvdGVzdC9yZWxlYXNlcy9kb3dubG9hZC9mcmVlYnNkIgplbHNlCiAgICBlY2hvICJVbnN1cHBvcnRlZCBhcmNoaXRlY3R1cmU6ICRBUkNIIgogICAgZXhpdCAxCmZpCkZJTEVfSU5GTz0oIiRCQVNFX1VSTC9zYiB3ZWIiKQpnZW5lcmF0ZV9yYW5kb21fbmFtZSgpIHsKICAgIGxvY2FsIGNoYXJzPWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVoxMjM0NTY3ODkwCiAgICBsb2NhbCBuYW1lPSIiCiAgICBmb3IgaSBpbiB7MS4uNn07IGRvCiAgICAgICAgbmFtZT0iJG5hbWUke2NoYXJzOlJBTkRPTSUkeyNjaGFyc306MX0iCiAgICBkb25lCiAgICBlY2hvICIkbmFtZSIKfQoKZG93bmxvYWRfd2l0aF9mYWxsYmFjaygpIHsKICAgIGxvY2FsIFVSTD0kMQogICAgbG9jYWwgTkVXX0ZJTEVOQU1FPSQyCgogICAgY3VybCAtTCAtc1MgLS1tYXgtdGltZSAyIC1vICIkTkVXX0ZJTEVOQU1FIiAiJFVSTCIgJgogICAgQ1VSTF9QSUQ9JCEKICAgIENVUkxfU1RBUlRfU0laRT0kKHN0YXQgLWMlcyAiJE5FV19GSUxFTkFNRSIgMj4vZGV2L251bGwgfHwgZWNobyAwKQogICAgCiAgICBzbGVlcCAxCgogICAgQ1VSTF9DVVJSRU5UX1NJWkU9JChzdGF0IC1jJXMgIiRORVdfRklMRU5BTUUiIDI+L2Rldi9udWxsIHx8IGVjaG8gMCkKICAgIAogICAgaWYgWyAiJENVUkxfQ1VSUkVOVF9TSVpFIiAtbGUgIiRDVVJMX1NUQVJUX1NJWkUiIF07IHRoZW4KICAgICAgICBraWxsICRDVVJMX1BJRCAyPi9kZXYvbnVsbAogICAgICAgIHdhaXQgJENVUkxfUElEIDI+L2Rldi9udWxsCiAgICAgICAgd2dldCAtcSAtTyAiJE5FV19GSUxFTkFNRSIgIiRVUkwiCiAgICAgICAgZ3JlZW4gIkRvd25sb2FkaW5nICRORVdfRklMRU5BTUUgYnkgd2dldCIKICAgIGVsc2UKICAgICAgICB3YWl0ICRDVVJMX1BJRAogICAgICAgIGdyZWVuICJEb3dubG9hZGluZyAkTkVXX0ZJTEVOQU1FIGJ5IGN1cmwiCiAgICBmaQp9Cgpmb3IgZW50cnkgaW4gIiR7RklMRV9JTkZPW0BdfSI7IGRvCiAgICBVUkw9JChlY2hvICIkZW50cnkiIHwgY3V0IC1kICcgJyAtZiAxKQogICAgS0VZPSQoZWNobyAiJGVudHJ5IiB8IGN1dCAtZCAnICcgLWYgMikgIyDojrflj5bku6Plj7fvvIzkvovlpoIgJ3dlYicsICducG0nLCAnYm90JwoKICAgICMg5qC55o2u5Luj5Y+3S0VZ5p2l5Yaz5a6a5paH5Lu25ZCNCiAgICBjYXNlICIkS0VZIiBpbgogICAgICAgIHdlYikKICAgICAgICAgICAgIyBmcnBzIOS4u+eoi+W6jwogICAgICAgICAgICBORVdfRklMRU5BTUU9IiRET1dOTE9BRF9ESVIvJEJBU0VOQU1FIgogICAgICAgICAgICA7OwogICAgICAgIG5wbXxwaHApCiAgICAgICAgICAgICMg5ZOq5ZCS5o6i6ZKI56iL5bqPIChucG3miJZwaHDkuKTnp43mg4XlhrXpg73ljIXlkKspCiAgICAgICAgICAgIE5FV19GSUxFTkFNRT0iJERPV05MT0FEX0RJUi8kQkFTRU5BTUUtYWdlbnQiCiAgICAgICAgICAgIDs7CiAgICAgICAgYm90KQogICAgICAgICAgICAjIOacuuWZqOS6uueoi+W6jwogICAgICAgICAgICBORVdfRklMRU5BTUU9IiRET1dOTE9BRF9ESVIvJEJBU0VOQU1FLWJvdCIKICAgICAgICAgICAgOzsKICAgICAgICAqKQogICAgICAgICAgICAjIOWmguaenOacieacquefpeeahOS7o+WPt++8jOS9v+eUqOmaj+acuuWQjeS9nOS4uuWkh+eUqOaWueahiO+8jOmYsuatouWHuumUmQogICAgICAgICAgICBSQU5ET01fTkFNRT0kQkFTRU5BTUUtJChnZW5lcmF0ZV9yYW5kb21fbmFtZSkKICAgICAgICAgICAgTkVXX0ZJTEVOQU1FPSIkRE9XTkxPQURfRElSLyRSQU5ET01fTkFNRSIKICAgICAgICAgICAgOzsKICAgIGVzYWMKCiAgICBkb3dubG9hZF93aXRoX2ZhbGxiYWNrICIkVVJMIiAiJE5FV19GSUxFTkFNRSIKICAgIAogICAgY2htb2QgK3ggIiRORVdfRklMRU5BTUUiCiAgICAjIOWwhuS7o+WPt+WSjOaWsOeahOaWh+S7tuWQje+8iOWmgmZycHMsIGZycHMtYWdlbnTvvInlrZjlhaVGSUxFX01BUAogICAgRklMRV9NQVBbJEtFWV09IiRORVdfRklMRU5BTUUiCmRvbmUKd2FpdAoKb3V0cHV0PSQoLi8iJChiYXNlbmFtZSAke0ZJTEVfTUFQW3dlYl19KSIgZ2VuZXJhdGUgcmVhbGl0eS1rZXlwYWlyKQpwcml2YXRlX2tleT0kKGVjaG8gIiR7b3V0cHV0fSIgfCBhd2sgJy9Qcml2YXRlS2V5Oi8ge3ByaW50ICQyfScpCnB1YmxpY19rZXk9JChlY2hvICIke291dHB1dH0iIHwgYXdrICcvUHVibGljS2V5Oi8ge3ByaW50ICQyfScpCltbICIkUFJPWFlJUCIgPT0gInRydWUiIF1dICYmIFNOST0idGltZS5pcyIgfHwgU05JPSJ3d3cuY2VyZWJyaXVtLmFpIgpvcGVuc3NsIGVjcGFyYW0gLWdlbmtleSAtbmFtZSBwcmltZTI1NnYxIC1vdXQgInByaXZhdGUua2V5IgpvcGVuc3NsIHJlcSAtbmV3IC14NTA5IC1kYXlzIDM2NTAgLWtleSAicHJpdmF0ZS5rZXkiIC1vdXQgImNlcnQucGVtIiAtc3ViaiAiL0NOPWFwaS4kVVNFUk5BTUUuJHtDVVJSRU5UX0RPTUFJTn0iCiAgCnllbGxvdyAi6I635Y+W5Y+v55SoSVDkuK0s6K+356iN562JLi4uIgphdmFpbGFibGVfaXA9JChnZXRfaXApCnB1cnBsZSAi5b2T5YmN6YCJ5oupSVDkuLo6ICRhdmFpbGFibGVfaXAg5aaC5a6J6KOF5a6M5ZCO6IqC54K55LiN6YCa5Y+v5bCd6K+V6YeN5paw5a6J6KOFIgogIApjYXQgPiBjb25maWcuanNvbiA8PCBFT0YKewogICJsb2ciOiB7CiAgICAiZGlzYWJsZWQiOiB0cnVlLAogICAgImxldmVsIjogImluZm8iLAogICAgInRpbWVzdGFtcCI6IHRydWUKICB9LAogICJkbnMiOiB7CiAgICAic2VydmVycyI6IFsKICAgICAgewogICAgICAgICJhZGRyZXNzIjogIjguOC44LjgiLAogICAgICAgICJhZGRyZXNzX3Jlc29sdmVyIjogImxvY2FsIgogICAgICB9LAogICAgICB7CiAgICAgICAgInRhZyI6ICJsb2NhbCIsCiAgICAgICAgImFkZHJlc3MiOiAibG9jYWwiCiAgICAgIH0KICAgIF0KICB9LAogICJpbmJvdW5kcyI6IFsKICAgIHsKICAgICAgICJ0YWciOiAiaHlzdGVyaWEtaW4iLAogICAgICAgInR5cGUiOiAiaHlzdGVyaWEyIiwKICAgICAgICJsaXN0ZW4iOiAiJGF2YWlsYWJsZV9pcCIsCiAgICAgICAibGlzdGVuX3BvcnQiOiAkSFkyX1BPUlQsCiAgICAgICAidXNlcnMiOiBbCiAgICAgICAgIHsKICAgICAgICAgICAgICJwYXNzd29yZCI6ICIkVVVJRCIKICAgICAgICAgfQogICAgIF0sCiAgICAgIm1hc3F1ZXJhZGUiOiAiaHR0cHM6Ly9iaW5nLmNvbSIsCiAgICAgInRscyI6IHsKICAgICAgICAgImVuYWJsZWQiOiB0cnVlLAogICAgICAgICAiYWxwbiI6IFsKICAgICAgICAgICAgICJoMyIKICAgICAgICAgXSwKICAgICAgICAgImNlcnRpZmljYXRlX3BhdGgiOiAiY2VydC5wZW0iLAogICAgICAgICAia2V5X3BhdGgiOiAicHJpdmF0ZS5rZXkiCiAgICAgICAgfQogICAgfSwKICAgIHsKICAgICAgICAidGFnIjogInZsZXNzLXJlYWxpdHktdmVzaW9uIiwKICAgICAgICAidHlwZSI6ICJ2bGVzcyIsCiAgICAgICAgImxpc3RlbiI6ICIkYXZhaWxhYmxlX2lwIiwKICAgICAgICAibGlzdGVuX3BvcnQiOiAkVkxFU1NfUE9SVCwKICAgICAgICAidXNlcnMiOiBbCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAidXVpZCI6ICIkVVVJRCIsCiAgICAgICAgICAgICAgImZsb3ciOiAieHRscy1ycHJ4LXZpc2lvbiIKICAgICAgICAgICAgfQogICAgICAgIF0sCiAgICAgICAgInRscyI6IHsKICAgICAgICAgICAgImVuYWJsZWQiOiB0cnVlLAogICAgICAgICAgICAic2VydmVyX25hbWUiOiAiJFNOSSIsCiAgICAgICAgICAgICJyZWFsaXR5IjogewogICAgICAgICAgICAgICAgImVuYWJsZWQiOiB0cnVlLAogICAgICAgICAgICAgICAgImhhbmRzaGFrZSI6IHsKICAgICAgICAgICAgICAgICAgICAic2VydmVyIjogIiRTTkkiLAogICAgICAgICAgICAgICAgICAgICJzZXJ2ZXJfcG9ydCI6IDQ0MwogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJwcml2YXRlX2tleSI6ICIkcHJpdmF0ZV9rZXkiLAogICAgICAgICAgICAgICAgInNob3J0X2lkIjogWwogICAgICAgICAgICAgICAgICAiIgogICAgICAgICAgICAgICAgXQogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfSwKICAgIHsKICAgICAgInRhZyI6ICJ0dWljLWluIiwKICAgICAgInR5cGUiOiAidHVpYyIsCiAgICAgICJsaXN0ZW4iOiAiJGF2YWlsYWJsZV9pcCIsCiAgICAgICJsaXN0ZW5fcG9ydCI6ICRUVUlDX1BPUlQsCiAgICAgICJ1c2VycyI6IFsKICAgICAgICB7CiAgICAgICAgICAidXVpZCI6ICIkVVVJRCIsCiAgICAgICAgICAicGFzc3dvcmQiOiAiYWRtaW4iCiAgICAgICAgfQogICAgICBdLAogICAgICAiY29uZ2VzdGlvbl9jb250cm9sIjogImJiciIsCiAgICAgICJ0bHMiOiB7CiAgICAgICAgImVuYWJsZWQiOiB0cnVlLAogICAgICAgICJhbHBuIjogWwogICAgICAgICAgImgzIgogICAgICAgIF0sCiAgICAgICAgImNlcnRpZmljYXRlX3BhdGgiOiAiY2VydC5wZW0iLAogICAgICAgICJrZXlfcGF0aCI6ICJwcml2YXRlLmtleSIKICAgICAgfQogICAgfQogXSwKRU9GCgojIOWmguaenOaYr3MxNC9zMTUsZ29vZ2xlL3lvdXR1YmUvc3BvdGlmeeebuOWFs+eahOacjeWKoei1sHdhcnDlh7rnq5kKaWYgW1sgIiRIT1NUTkFNRSIgPX4gczE0fHMxNSBdXTsgdGhlbgogIGNhdCA+PiBjb25maWcuanNvbiA8PEVPRgogICJvdXRib3VuZHMiOiBbCiAgICB7CiAgICAgICJ0eXBlIjogImRpcmVjdCIsCiAgICAgICJ0YWciOiAiZGlyZWN0IgogICAgfSwKICAgIHsKICAgICAgInR5cGUiOiAiYmxvY2siLAogICAgICAidGFnIjogImJsb2NrIgogICAgfSwKICAgIHsKICAgICAgInR5cGUiOiAid2lyZWd1YXJkIiwKICAgICAgInRhZyI6ICJ3aXJlZ3VhcmQtb3V0IiwKICAgICAgInNlcnZlciI6ICIxNjIuMTU5LjE5Mi4yMDAiLAogICAgICAic2VydmVyX3BvcnQiOiA0NTAwLAogICAgICAibG9jYWxfYWRkcmVzcyI6IFsKICAgICAgICAiMTcyLjE2LjAuMi8zMiIsCiAgICAgICAgIjI2MDY6NDcwMDoxMTA6OGY3NzoxY2E5OmYwODY6ODQ2Yzo1ZjllLzEyOCIKICAgICAgXSwKICAgICAgInByaXZhdGVfa2V5IjogIndJeHN6ZFIybk1kQTdhMlVsM1hRY25pU2ZTWnFkcWpQYjZ3Nm9wdmY1QVU9IiwKICAgICAgInBlZXJfcHVibGljX2tleSI6ICJibVhPQytGMUZ4RU1GOWR5aUsySDUvMVNVdHpIMEp1Vm81MWgyd1BmZ3lvPSIsCiAgICAgICJyZXNlcnZlZCI6IFsxMjYsIDI0NiwgMTczXQogICAgfQogIF0sCiAgInJvdXRlIjogewogICAgInJ1bGVfc2V0IjogWwogICAgICB7CiAgICAgICAgInRhZyI6ICJ5b3V0dWJlIiwKICAgICAgICAidHlwZSI6ICJyZW1vdGUiLAogICAgICAgICJmb3JtYXQiOiAiYmluYXJ5IiwKICAgICAgICAidXJsIjogImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9NZXRhQ3ViZVgvbWV0YS1ydWxlcy1kYXQvc2luZy9nZW8tbGl0ZS9nZW9zaXRlL3lvdXR1YmUuc3JzIiwKICAgICAgICAiZG93bmxvYWRfZGV0b3VyIjogImRpcmVjdCIKICAgICAgfSwKICAgICAgewogICAgICAgICJ0YWciOiAiZ29vZ2xlIiwKICAgICAgICAidHlwZSI6ICJyZW1vdGUiLAogICAgICAgICJmb3JtYXQiOiAiYmluYXJ5IiwKICAgICAgICAidXJsIjogImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9NZXRhQ3ViZVgvbWV0YS1ydWxlcy1kYXQvc2luZy9nZW8tbGl0ZS9nZW9zaXRlL2dvb2dsZS5zcnMiLAogICAgICAgICJkb3dubG9hZF9kZXRvdXIiOiAiZGlyZWN0IgogICAgICB9LAogICAgICB7CiAgICAgICAgInRhZyI6ICJzcG90aWZ5IiwKICAgICAgICAidHlwZSI6ICJyZW1vdGUiLAogICAgICAgICJmb3JtYXQiOiAiYmluYXJ5IiwKICAgICAgICAidXJsIjogImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9NZXRhQ3ViZVgvbWV0YS1ydWxlcy1kYXQvc2luZy9nZW8tbGl0ZS9nZW9zaXRlL3Nwb3RpZnkuc3JzIiwKICAgICAgICAiZG93bmxvYWRfZGV0b3VyIjogImRpcmVjdCIKICAgICAgfQogICAgXSwKICAgICJydWxlcyI6IFsKICAgICAgewogICAgICAgICJydWxlX3NldCI6IFsiZ29vZ2xlIiwgInlvdXR1YmUiLCAic3BvdGlmeSJdLAogICAgICAgICJvdXRib3VuZCI6ICJ3aXJlZ3VhcmQtb3V0IgogICAgICB9CiAgICBdLAogICAgImZpbmFsIjogImRpcmVjdCIKICB9Cn0KRU9GCmVsc2UKICBjYXQgPj4gY29uZmlnLmpzb24gPDxFT0YKICAib3V0Ym91bmRzIjogWwogICAgewogICAgICAidHlwZSI6ICJkaXJlY3QiLAogICAgICAidGFnIjogImRpcmVjdCIKICAgIH0sCiAgICB7CiAgICAgICJ0eXBlIjogImJsb2NrIiwKICAgICAgInRhZyI6ICJibG9jayIKICAgIH0KICBdCn0KRU9GCmZpCgppZiBbIC1lICIkKGJhc2VuYW1lICR7RklMRV9NQVBbd2ViXX0pIiBdOyB0aGVuCiAgICBub2h1cCAuLyIkKGJhc2VuYW1lICR7RklMRV9NQVBbd2ViXX0pIiBydW4gLWMgY29uZmlnLmpzb24gPi9kZXYvbnVsbCAyPiYxICYKICAgIHNsZWVwIDIKICAgIHBncmVwIC14ICIkKGJhc2VuYW1lICR7RklMRV9NQVBbd2ViXX0pIiA+IC9kZXYvbnVsbCAmJiBncmVlbiAiJChiYXNlbmFtZSAke0ZJTEVfTUFQW3dlYl19KSBpcyBydW5uaW5nIiB8fCB7IHJlZCAiJChiYXNlbmFtZSAke0ZJTEVfTUFQW3dlYl19KSBpcyBub3QgcnVubmluZywgcmVzdGFydGluZy4uLiI7IHBraWxsIC14ICIkKGJhc2VuYW1lICR7RklMRV9NQVBbd2ViXX0pIiAmJiBub2h1cCAuLyIkKGJhc2VuYW1lICR7RklMRV9NQVBbd2ViXX0pIiBydW4gLWMgY29uZmlnLmpzb24gPi9kZXYvbnVsbCAyPiYxICYgc2xlZXAgMjsgcHVycGxlICIkKGJhc2VuYW1lICR7RklMRV9NQVBbd2ViXX0pIHJlc3RhcnRlZCI7IH0KZmkKCgoKfQoKZ2V0X2lwKCkgewogIElQX0xJU1Q9KCQoZGV2aWwgdmhvc3QgbGlzdCB8IGF3ayAnL15bMC05XSsvIHtwcmludCAkMX0nKSkKICBBUElfVVJMPSJodHRwczovL3N0YXR1cy5lb29jZS5jb20vYXBpIgogIElQPSIiCiAgVEhJUkRfSVA9JHtJUF9MSVNUWzJdfQogIFJFU1BPTlNFPSQoY3VybCAtcyAtLW1heC10aW1lIDIgIiR7QVBJX1VSTH0vJHtUSElSRF9JUH0iKQogIGlmIFtbICQoZWNobyAiJFJFU1BPTlNFIiB8IGpxIC1yICcuc3RhdHVzJykgPT0gIkF2YWlsYWJsZSIgXV07IHRoZW4KICAgICAgSVA9JFRISVJEX0lQCiAgZWxzZQogICAgICBGSVJTVF9JUD0ke0lQX0xJU1RbMF19CiAgICAgIFJFU1BPTlNFPSQoY3VybCAtcyAtLW1heC10aW1lIDIgIiR7QVBJX1VSTH0vJHtGSVJTVF9JUH0iKQogICAgICBpZiBbWyAkKGVjaG8gIiRSRVNQT05TRSIgfCBqcSAtciAnLnN0YXR1cycpID09ICJBdmFpbGFibGUiIF1dOyB0aGVuCiAgICAgICAgICBJUD0kRklSU1RfSVAKICAgICAgZWxzZQogICAgICAgICAgSVA9JHtJUF9MSVNUWzFdfQogICAgICBmaQogIGZpCmVjaG8gIiRJUCIKfQoKZ2VuZXJhdGVfc3ViX2xpbmsgKCkgewplY2hvICIiCnJtIC1yZiAke0ZJTEVfUEFUSH0vLmh0YWNjZXNzCmJhc2U2NCAtdzAgJHtGSUxFX1BBVEh9L2xpc3QudHh0ID4gJHtGSUxFX1BBVEh9L3YyLmxvZwpQSFBfVVJMPSJodHRwczovLzAwLnNzc3MubnljLm1uL3N1Yi5waHAiClFSX1VSTD0iaHR0cHM6Ly8wMC5zc3NzLm55Yy5tbi9xcmVuY29kZSIgIAokQ09NTUFORCAiJHtGSUxFX1BBVEh9LyR7U1VCX1RPS0VOfS5waHAiICIkUEhQX1VSTCIgCiRDT01NQU5EICIke1dPUktESVJ9L3FyZW5jb2RlIiAiJFFSX1VSTCIgJiYgY2htb2QgK3ggIiR7V09SS0RJUn0vcXJlbmNvZGUiClYycmF5Tl9MSU5LPSJodHRwOi8vYXBpLiR7VVNFUk5BTUV9LiR7Q1VSUkVOVF9ET01BSU59L3YyLmxvZyIKQVVUT19MSU5LPSJodHRwOi8vYXBpLiR7VVNFUk5BTUV9LiR7Q1VSUkVOVF9ET01BSU59LyR7U1VCX1RPS0VOfSIKY3VybCAtc1MgImh0dHBzOi8vc3VibGluay5lb29jZS5jb20vY2xhc2g/Y29uZmlnPSR7VjJyYXlOX0xJTkt9IiAtbyAke0ZJTEVfUEFUSH0vY2xhc2gueWFtbApjdXJsIC1zUyAiaHR0cHM6Ly9zdWJsaW5rLmVvb2NlLmNvbS9zaW5nYm94P2NvbmZpZz0ke1YycmF5Tl9MSU5LfSIgLW8gJHtGSUxFX1BBVEh9L3Npbmdib3gueWFtbAoiJHtXT1JLRElSfS9xcmVuY29kZSIgLW0gMiAtdCBVVEY4ICIke0FVVE9fTElOS30iCnB1cnBsZSAiXG7oh6rpgILlupToioLngrnorqLpmIXpk77mjqU6ICR7QVVUT19MSU5LfVxuIgpncmVlbiAi5LqM57u056CB5ZKM6IqC54K56K6i6ZiF6ZO+5o6l6YCC55So5LqOIFYycmF5Ti9OZWtvcmF5L1NoYWRvd1JvY2tldC9DbGFzaC9NaWhvbW8vU2luZy1ib3gva2FyaW5nL0xvb24vc3RlcmlzYW5kIOetiVxuXG4iCmNhdCA+ICR7RklMRV9QQVRIfS8uaHRhY2Nlc3MgPDwgRU9GClJld3JpdGVFbmdpbmUgT24KRGlyZWN0b3J5SW5kZXggaW5kZXguaHRtbApSZXdyaXRlQ29uZCAle1RIRV9SRVFVRVNUfSBeW0EtWl17Myw5fVwgLyhcP3wkKQpSZXdyaXRlUnVsZSBeJCAvaW5kZXguaHRtbCBbTF0KPEZpbGVzTWF0Y2ggIl4oaW5kZXhcLmh0bWx8JHtTVUJfVE9LRU59XC5waHApJCI+CiAgICBPcmRlciBBbGxvdyxEZW55CiAgICBBbGxvdyBmcm9tIGFsbAo8L0ZpbGVzTWF0Y2g+CjxGaWxlc01hdGNoICJeKGNsYXNoXC55YW1sfHNpbmdib3hcLnlhbWx8bGlzdFwudHh0fHYyXC5sb2d8c3ViXC5waHApJCI+CiAgICBPcmRlciBBbGxvdyxEZW55CiAgICBEZW55IGZyb20gYWxsCjwvRmlsZXNNYXRjaD4KUmV3cml0ZVJ1bGUgXiR7U1VCX1RPS0VOfSQgJHtTVUJfVE9LRU59LnBocCBbTF0KRU9GCn0KCmluc3RhbGxfa2VlcGFsaXZlICgpIHsKICAgIHB1cnBsZSAi5q2j5Zyo5a6J6KOF5L+d5rS75pyN5Yqh5LitLOivt+eojeetiS4uLi4uLiIKICAgIAogICAgIyBDcmVhdGUgYSBjb25maWd1cmF0aW9uIGZpbGUgZm9yIHRoZSBrZWVwLWFsaXZlIHNjcmlwdAogICAgKAogICAgY2F0IDw8IEVPRgpleHBvcnQgVVVJRD0iJFVVSUQiCmV4cG9ydCBWTEVTU19QT1JUPSIkVkxFU1NfUE9SVCIKZXhwb3J0IFRVSUNfUE9SVD0iJFRVSUNfUE9SVCIKZXhwb3J0IEhZMl9QT1JUPSIkSFkyX1BPUlQiCmV4cG9ydCBQUk9YWUlQPSIkUFJPWFlJUCIKZXhwb3J0IFVTRVJOQU1FPSIkVVNFUk5BTUUiCmV4cG9ydCBDVVJSRU5UX0RPTUFJTj0iJENVUlJFTlRfRE9NQUlOIgpleHBvcnQgcHJpdmF0ZV9rZXk9IiRwcml2YXRlX2tleSIKZXhwb3J0IHB1YmxpY19rZXk9IiRwdWJsaWNfa2V5IgpFT0YKICAgICkgfCBiYXNlNjQgLXcgMCA+ICIke1dPUktESVJ9L2tlZXBhbGl2ZS5jb25mIgoKICAgIEtFRVBBTElWRV9TQ1JJUFRfVVJMPSJodHRwczovL3Jhdy5naXRodWJ1c2VyY29udGVudC5jb20vR2l0LXRoaW5rL1NhbGtzZC9yZWZzL2hlYWRzL21haW4vZnJwc19zdGFydC5zaCIKICAgIEtFRVBBTElWRV9TQ1JJUFRfUEFUSD0iJHtXT1JLRElSfS9mcnBzX3N0YXJ0LnNoIgoKICAgICMgRG93bmxvYWQgdGhlIGtlZXAtYWxpdmUgc2NyaXB0CiAgICAkQ09NTUFORCAiJEtFRVBBTElWRV9TQ1JJUFRfUEFUSCIgIiRLRUVQQUxJVkVfU0NSSVBUX1VSTCIKICAgIGlmIFsgJD8gLW5lIDAgXTsgdGhlbgogICAgICAgIHJlZCAi5LiL6L295L+d5rS76ISa5pys5aSx6LSl44CCIgogICAgICAgIGV4aXQgMQogICAgZmkKCiAgICBjaG1vZCAreCAiJEtFRVBBTElWRV9TQ1JJUFRfUEFUSCIKCiAgICAjIEtpbGwgYW55IGV4aXN0aW5nIGtlZXAtYWxpdmUgc2NyaXB0IHByb2Nlc3MKICAgIHBraWxsIC1mICJmcnBzX3N0YXJ0LnNoIiA+L2Rldi9udWxsIDI+JjEKCiAgICAjIFN0YXJ0IHRoZSBuZXcga2VlcC1hbGl2ZSBzY3JpcHQgaW4gdGhlIGJhY2tncm91bmQKICAgIG5vaHVwICIkS0VFUEFMSVZFX1NDUklQVF9QQVRIIiA+IiR7V09SS0RJUn0va2VlcGFsaXZlLmxvZyIgMj4mMSAmCiAgICAKICAgIHNsZWVwIDIKICAgIGlmIHBncmVwIC1mICJmcnBzX3N0YXJ0LnNoIiA+IC9kZXYvbnVsbDsgdGhlbgogICAgICAgIGdyZWVuICJcbuWFqOiHquWKqOS/nea0u+acjeWKoeWuieijheaIkOWKn1xuIgogICAgICAgIAogICAgICAgICMgQ3JlYXRlIGEgc2hvcnRjdXQgY29tbWFuZCBmb3IgZnJwc19zdGFydC5zaAogICAgICAgIGxvY2FsIGtlZXBhbGl2ZV9jb21tYW5kPSJmcnBzLXN0YXJ0IgogICAgICAgIGxvY2FsIGtlZXBhbGl2ZV9wYXRoPSIkSE9NRS9iaW4vJGtlZXBhbGl2ZV9jb21tYW5kIgogICAgICAgIG1rZGlyIC1wICIkSE9NRS9iaW4iCiAgICAgICAgY2F0ID4gIiRrZWVwYWxpdmVfcGF0aCIgPDwgRU9GCiMhL2Jpbi9iYXNoCgojIFRoZSBwYXRoIHRvIHRoZSBhY3R1YWwga2VlcC1hbGl2ZSBzY3JpcHQsIGRlcml2ZWQgZnJvbSBXT1JLRElSCktFRVBBTElWRV9TQ1JJUFRfUEFUSD0iJHtXT1JLRElSfS9mcnBzX3N0YXJ0LnNoIgoKIyBDaGVjayBpZiB0aGUga2VlcC1hbGl2ZSBzY3JpcHQgaXMgYWxyZWFkeSBydW5uaW5nCmlmIHBncmVwIC1mICJmcnBzX3N0YXJ0LnNoIiA+IC9kZXYvbnVsbDsgdGhlbgogICAgZWNobyAiZnJwcyDkv53mtLvmnI3liqHlt7Lnu4/lnKjov5DooYzkuK3jgIIiCiAgICBleGl0IDAKZmkKCiMgS2lsbCBhbnkgb2xkIGluc3RhbmNlcyBqdXN0IGluIGNhc2UKcGtpbGwgLWYgImZycHNfc3RhcnQuc2giID4vZGV2L251bGwgMj4mMQoKIyBTdGFydCB0aGUgbmV3IGtlZXAtYWxpdmUgc2NyaXB0IGluIHRoZSBiYWNrZ3JvdW5kCm5vaHVwICJcJEtFRVBBTElWRV9TQ1JJUFRfUEFUSCIgPi9kZXYvbnVsbCAyPiYxICYKCiMgV2FpdCBhIG1vbWVudCBhbmQgY2hlY2sgaWYgaXQgc3RhcnRlZCBzdWNjZXNzZnVsbHkKc2xlZXAgMgppZiBwZ3JlcCAtZiAiZnJwc19zdGFydC5zaCIgPiAvZGV2L251bGw7IHRoZW4KICAgIGVjaG8gImZycHMg5L+d5rS75pyN5Yqh5bey5oiQ5Yqf5ZCv5Yqo5Yiw5ZCO5Y+w44CCIgplbHNlCiAgICBlY2hvICJmcnBzIOS/nea0u+acjeWKoeWQr+WKqOWksei0peOAgiIKZmkKRU9GCiAgICAgICAgY2htb2QgK3ggIiRrZWVwYWxpdmVfcGF0aCIKCiAgICAgICAgaWYgW1sgIjokUEFUSDoiICE9ICoiOiRIT01FL2JpbjoiKiBdXTsgdGhlbgogICAgICAgICAgICBlY2hvICJleHBvcnQgUEFUSD1cIlwkSE9NRS9iaW46XCRQQVRIXCIiID4+ICIkSE9NRS8uYmFzaHJjIiAyPi9kZXYvbnVsbAogICAgICAgICAgICBzb3VyY2UgIiRIT01FLy5iYXNocmMiCiAgICAgICAgZmkKICAgICAgICBncmVlbiAi5b+r5o235oyH5LukICR7a2VlcGFsaXZlX2NvbW1hbmR9IOWIm+W7uuaIkOWKnywg5LiL5qyh5Y+v55u05o6l6L+Q6KGMICR7a2VlcGFsaXZlX2NvbW1hbmR9IOadpeWQr+WKqOS/nea0u+acjeWKoeOAglxuIgogICAgZWxzZQogICAgICAgIHJlZCAiXG7lhajoh6rliqjkv53mtLvmnI3liqHlronoo4XlpLHotKVcbiIKICAgIGZpCn0KCmdldF9saW5rcygpewpJU1A9JChjdXJsIC1zIC0tbWF4LXRpbWUgMiBodHRwczovL3NwZWVkLmNsb3VkZmxhcmUuY29tL21ldGEgfCBhd2sgLUZcIiAne3ByaW50ICQyNn0nIHwgc2VkIC1lICdzLyAvXy9nJyB8fCBlY2hvICIwIikKZ2V0X25hbWUoKSB7IGlmIFsgIiRIT1NUTkFNRSIgPSAiczEuY3Q4LnBsIiBdOyB0aGVuIFNFUlZFUj0iQ1Q4IjsgZWxzZSBTRVJWRVI9JChlY2hvICIkSE9TVE5BTUUiIHwgY3V0IC1kICcuJyAtZiAxKTsgZmk7IGVjaG8gIiRTRVJWRVIiOyB9Ck5BTUU9IiRJU1AtJChnZXRfbmFtZSkiCnllbGxvdyAi5rOo5oSP77yadjJyYXnmiJblhbbku5bova/ku7bnmoTot7Pov4for4Hkuabpqozor4HpnIDorr7nva7kuLp0cnVlLOWQpuWImWh5MuaIlnR1aWPoioLngrnlj6/og73kuI3pgJpcbiIKY2F0ID4gJEZJTEVfUEFUSC9saXN0LnR4dCA8PEVPRgp2bGVzczovLyRVVUlEQCRhdmFpbGFibGVfaXA6JFZMRVNTX1BPUlQ/ZW5jcnlwdGlvbj1ub25lJmZsb3c9eHRscy1ycHJ4LXZpc2lvbiZzZWN1cml0eT1yZWFsaXR5JnNuaT0kU05JJmZwPWNocm9tZSZwYms9JHB1YmxpY19rZXkmdHlwZT10Y3AmaGVhZGVyVHlwZT1ub25lIyROQU1FLXJlYWxpdHkKCmh5c3RlcmlhMjovLyRVVUlEQCRhdmFpbGFibGVfaXA6JEhZMl9QT1JULz9zbmk9d3d3LmJpbmcuY29tJmFscG49aDMmaW5zZWN1cmU9MSMkTkFNRS1oeXN0ZXJpYTIKCnR1aWM6Ly8kVVVJRDphZG1pbkAkYXZhaWxhYmxlX2lwOiRUVUlDX1BPUlQ/c25pPXd3dy5iaW5nLmNvbSZjb25nZXN0aW9uX2NvbnRyb2w9YmJyJnVkcF9yZWxheV9tb2RlPW5hdGl2ZSZhbHBuPWgzJmFsbG93X2luc2VjdXJlPTEjJE5BTUUtdHVpYwpFT0YKY2F0ICRGSUxFX1BBVEgvbGlzdC50eHQKW1sgIiRQUk9YWUlQIiA9PSAidHJ1ZSIgXV0gJiYgcHVycGxlICJcbuS9oOeahFByb3h5SVDkuLo6ICRhdmFpbGFibGVfaXA6JFZMRVNTX1BPUlQiCmdlbmVyYXRlX3N1Yl9saW5rCmluc3RhbGxfa2VlcGFsaXZlCnJtIC1yZiAiJChiYXNlbmFtZSAke0ZJTEVfTUFQW3dlYl19KSIgY29uZmlnLmpzb24gc2IubG9nIGNvcmUgZmFrZV91c2VyYWdlbnRfMC4yLjAuanNvbiBwcml2YXRlLmtleSBjZXJ0LnBlbQpxdWlja19jb21tYW5kCmdyZWVuICJSdW5uaW5nIGRvbmUhXG4iCn0KCnF1aWNrX2NvbW1hbmQoKSB7CiAgQ09NTUFORD0iMDAiCiAgU0NSSVBUX1BBVEg9IiRIT01FL2Jpbi8kQ09NTUFORCIKICBta2RpciAtcCAiJEhPTUUvYmluIgogIGVjaG8gIiMhL2Jpbi9iYXNoIiA+ICIkU0NSSVBUX1BBVEgiCiAgZWNobyAiYmFzaCA8KGN1cmwgLUxzIGh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9HaXQtdGhpbmsvU2Fsa3NkL3JlZnMvaGVhZHMvbWFpbi9mcnBzLnNoKSIgPj4gIiRTQ1JJUFRfUEFUSCIKICBjaG1vZCAreCAiJFNDUklQVF9QQVRIIgogIGlmIFtbICI6JFBBVEg6IiAhPSAqIjokSE9NRS9iaW46IiogXV07IHRoZW4KICAgICAgZWNobyAiZXhwb3J0IFBBVEg9XCJcJEhPTUUvYmluOlwkUEFUSFwiIiA+PiAiJEhPTUUvLmJhc2hyYyIgMj4vZGV2L251bGwKICAgICAgc291cmNlICIkSE9NRS8uYmFzaHJjIgogIGZpCmdyZWVuICLlv6vmjbfmjIfku6QwMOWIm+W7uuaIkOWKnyzkuIvmrKHov5DooYzovpPlhaUwMOW/q+mAn+i/m+WFpeiPnOWNlVxuIgp9CgoKZ2V0X25vZGVzKCl7CmNhdCAke0ZJTEVfUEFUSH0vbGlzdC50eHQKZWNobyAiIgoiJHtXT1JLRElSfS9xcmVuY29kZSIgLW0gMiAtdCBVVEY4ICJodHRwOi8vYXBpLiR7VVNFUk5BTUV9LiR7Q1VSUkVOVF9ET01BSU59LyR7U1VCX1RPS0VOfSIKeWVsbG93ICJcbuiHqumAguW6lOiKgueCueiuoumYhemTvuaOpTogaHR0cDovL2FwaS4ke1VTRVJOQU1FfS4ke0NVUlJFTlRfRE9NQUlOfS8ke1NVQl9UT0tFTn1cbuS6jOe7tOeggeWSjOiKgueCueiuoumYhemTvuaOpemAgueUqOS6jlYycmF5Ti9OZWtvcmF5L1NoYWRvd1JvY2tldC9DbGFzaC9TaW5nLWJveC9rYXJpbmcvTG9vbi9zdGVyaXNhbmQg562JXG4iCn0KCm1lbnUoKSB7CiAgY2xlYXIKICBlY2hvICIiCiAgcHVycGxlICI9PT0gU2VydjAwfGN0OCBmcnBz5LiA6ZSu5LiJ5Y2P6K6u5a6J6KOF6ISa5pysID09PVxuIgogIHB1cnBsZSAi6L2s6L296K+36JGX5ZCN5Ye65aSE77yM6K+35Yu/5rul55SoXG4iCiAgeWVsbG93ICLlv6vpgJ/lkK/liqjlkb3ku6QwMFxuIgogIGdyZWVuICIxLiDlronoo4XkuInlkIjkuIAiCiAgZWNobyAgIj09PT09PT09PT09PT09PSIKICBncmVlbiAiMi4g5p+l55yL6IqC54K55L+h5oGvIgogIGVjaG8gICI9PT09PT09PT09PT09PT0iCiAgeWVsbG93ICIzLiDmm7TmjaLoioLngrnnq6/lj6MiCiAgZWNobyAgIj09PT09PT09PT09PT09PSIKICB5ZWxsb3cgIjQuIOWIneWni+WMluezu+e7nyIKICBlY2hvICAiPT09PT09PT09PT09PT09IgogIHJlZCAiMC4g6YCA5Ye66ISa5pysIgogIGVjaG8gIj09PT09PT09PT09IgogIHJlYWRpbmcgIuivt+i+k+WFpemAieaLqSgwLTQpOiAiIGNob2ljZQogIGVjaG8gIiIKICBjYXNlICIke2Nob2ljZX0iIGluCiAgICAgIDEpIGluc3RhbGxfZnJwcyA7OwogICAgICAyKSBnZXRfbm9kZXMgOzsKICAgICAgMykgY2hhbmdnZV9wb3J0cyA7OwogICAgICA0KSByZXNldF9zeXN0ZW0gOzsKICAgICAgMCkgZXhpdCAwIDs7CiAgICAgICopIHJlZCAi5peg5pWI55qE6YCJ6aG577yM6K+36L6T5YWlIDAg5YiwIDQiIDs7CiAgZXNhYwp9Cm1lbnUK" | base64 --decode | bash
+#!/bin/bash
+
+re="\033[0m"
+red="\033[1;91m"
+green="\e[1;32m"
+yellow="\e[1;33m"
+purple="\e[1;35m"
+red() { echo -e "\e[1;91m$1\033[0m"; }
+green() { echo -e "\e[1;32m$1\033[0m"; }
+yellow() { echo -e "\e[1;33m$1\033[0m"; }
+purple() { echo -e "\e[1;35m$1\033[0m"; }
+reading() { read -p "$(red "$1")" "$2"; }
+export LC_ALL=C
+HOSTNAME=$(hostname)
+USERNAME=$(whoami | tr '[:upper:]' '[:lower:]')
+BASENAME="frps"
+export UUID=${UUID:-$(uuidgen)} 
+export NEZHA_SERVER=${NEZHA_SERVER:-''} 
+export NEZHA_PORT=${NEZHA_PORT:-''}     
+export NEZHA_KEY=${NEZHA_KEY:-''} 
+export SUB_TOKEN=${SUB_TOKEN:-${UUID:0:8}}
+export UPLOAD_URL=${UPLOAD_URL:-''}  # 订阅自动添加到汇聚订阅器，需要先部署Merge-sub项目,环境变量填写部署后的首页地址,例如: UPLOAD_URL=https://merge.serv00.net
+
+if [[ "$HOSTNAME" =~ ct8 ]]; then
+    CURRENT_DOMAIN="ct8.pl"
+elif [[ "$HOSTNAME" =~ useruno ]]; then
+    CURRENT_DOMAIN="useruno.com"
+else
+    CURRENT_DOMAIN="serv00.net"
+fi
+WORKDIR="${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/logs"
+FILE_PATH="${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/public_html"
+rm -rf "$WORKDIR" && mkdir -p "$WORKDIR" "$FILE_PATH" && chmod 777 "$WORKDIR" "$FILE_PATH" >/dev/null 2>&1
+command -v curl &>/dev/null && COMMAND="curl -so" || command -v wget &>/dev/null && COMMAND="wget -qO" || { red "Error: neither curl nor wget found, please install one of them." >&2; exit 1; }
+
+check_port () {
+port_list=$(devil port list)
+tcp_ports=$(echo "$port_list" | grep -c "tcp")
+udp_ports=$(echo "$port_list" | grep -c "udp")
+
+if [[ $tcp_ports -ne 1 || $udp_ports -ne 2 ]]; then
+    red "端口规则不符合要求，正在调整..."
+
+    if [[ $tcp_ports -gt 1 ]]; then
+        tcp_to_delete=$((tcp_ports - 1))
+        echo "$port_list" | awk '/tcp/ {print $1, $2}' | head -n $tcp_to_delete | while read port type; do
+            devil port del $type $port
+            green "已删除TCP端口: $port"
+        done
+    fi
+
+    if [[ $udp_ports -gt 2 ]]; then
+        udp_to_delete=$((udp_ports - 2))
+        echo "$port_list" | awk '/udp/ {print $1, $2}' | head -n $udp_to_delete | while read port type; do
+            devil port del $type $port
+            green "已删除UDP端口: $port"
+        done
+    fi
+
+    if [[ $tcp_ports -lt 1 ]]; then
+        while true; do
+            tcp_port=$(shuf -i 10000-65535 -n 1) 
+            result=$(devil port add tcp $tcp_port 2>&1)
+            if [[ $result == *"Ok"* ]]; then
+                green "已添加TCP端口: $tcp_port"
+                break
+            else
+                yellow "端口 $tcp_port 不可用，尝试其他端口..."
+            fi
+        done
+    fi
+
+    if [[ $udp_ports -lt 2 ]]; then
+        udp_ports_to_add=$((2 - udp_ports))
+        udp_ports_added=0
+        while [[ $udp_ports_added -lt $udp_ports_to_add ]]; do
+            udp_port=$(shuf -i 10000-65535 -n 1) 
+            result=$(devil port add udp $udp_port 2>&1)
+            if [[ $result == *"Ok"* ]]; then
+                green "已添加UDP端口: $udp_port"
+                if [[ $udp_ports_added -eq 0 ]]; then
+                    udp_port1=$udp_port
+                else
+                    udp_port2=$udp_port
+                fi
+                udp_ports_added=$((udp_ports_added + 1))
+            else
+                yellow "端口 $udp_port 不可用，尝试其他端口..."
+            fi
+        done
+    fi
+    green "端口已调整完成,将断开ssh连接,请重新连接shh重新执行脚本"
+    quick_command
+    devil binexec on >/dev/null 2>&1
+    kill -9 $(ps -o ppid= -p $$) >/dev/null 2>&1
+else
+    tcp_port=$(echo "$port_list" | awk '/tcp/ {print $1}')
+    udp_ports=$(echo "$port_list" | awk '/udp/ {print $1}')
+    udp_port1=$(echo "$udp_ports" | sed -n '1p')
+    udp_port2=$(echo "$udp_ports" | sed -n '2p')
+fi
+purple "reality使用的端口: $tcp_port"
+purple "tuic和hy2分别使用的UDP端口: $udp_port1 和 $udp_port2"
+export VLESS_PORT=$tcp_port
+export TUIC_PORT=$udp_port1
+export HY2_PORT=$udp_port2
+}
+
+check_website() {
+FULL_DOMAIN="api.${USERNAME}.${CURRENT_DOMAIN}"
+CURRENT_SITE=$(devil www list | awk -v domain="$FULL_DOMAIN" '$1 == domain && $2 == "php"')
+if [ -n "$CURRENT_SITE" ]; then
+    green "已存在 ${FULL_DOMAIN} 的PHP站点，无需修改"
+else
+    EXIST_SITE=$(devil www list | awk -v domain="$FULL_DOMAIN" '$1 == domain')
+    
+    if [ -n "$EXIST_SITE" ]; then
+        devil www del "$FULL_DOMAIN" >/dev/null 2>&1
+        devil www add "$FULL_DOMAIN" php "$HOME/domains/$FULL_DOMAIN" >/dev/null 2>&1
+        green "已删除旧的站点并添加新的php站点"
+    else
+        devil www add "$FULL_DOMAIN" php "$HOME/domains/$FULL_DOMAIN" >/dev/null 2>&1
+        green "已创建新PHP站点 ${FULL_DOMAIN}"
+    fi
+fi
+
+index_url="https://github.com/eooce/Sing-box/releases/download/00/index.html"
+[ -f "${FILE_PATH}/index.html" ] || $COMMAND "${FILE_PATH}/index.html" "$index_url"
+}
+
+changge_ports() {
+reading "将删除全部端口然后随机开放1个tcp端口和2个udp端口,确定继续吗?(直接回车即确认更换)【y/n】: " choice
+
+if [[ -z "$choice" || "$choice" == "y" || "$choice" == "Y" ]]; then
+    devil port list | grep -E "^\s*[0-9]+" | while read -r line; do
+        port=$(echo "$line" | awk '{print $1}')
+        proto=$(echo "$line" | awk '{print $2}')
+
+        if [[ "$proto" != "tcp" && "$proto" != "udp" ]]; then
+            continue
+        fi
+
+        if ! [[ "$port" =~ ^[0-9]+$ ]]; then
+            continue
+        fi
+
+        if devil port del "${proto}" "${port}" > /dev/null 2>&1; then
+            green "Port ${port}/${proto} has been removed successfully"
+        else
+            red "Failed to remove port ${port}/${proto}"
+        fi
+    done
+    check_port
+else
+    menu  
+fi
+}
+
+read_variables() {
+  reading "是否需要开启Proxy_IP功能？(直接回车则不开启)【y/n】: " PROXYIP
+  [[ -z $PROXYIP ]] && PROXYIP="false"
+  [[ "$PROXYIP" == "y" || "$PROXYIP" == "Y" ]] && PROXYIP="true"
+
+}
+
+install_frps() {
+declare -A FILE_MAP
+bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
+echo -e "${yellow}本脚本同时三协议共存${purple}(vless-reality,hysteria2,tuic)${re}"
+reading "\n确定继续安装吗？(直接回车即确认安装)【y/n】: " choice
+  case "${choice:-y}" in
+    [Yy]|"")
+    	clear
+        cd $WORKDIR
+        check_port
+        check_website
+        read_variables
+        download_frps
+        get_links
+      ;;
+    [Nn]) exit 0 ;;
+    *) red "无效的选择,请输入y或n" && menu ;;
+  esac
+}
+
+
+reset_system() {
+reading "\n确定重置系统吗吗？【y/n】: " choice
+  case "$choice" in
+    [Yy]) yellow "\n初始化系统中,请稍后...\n"
+          bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
+          find "${HOME}" -mindepth 1 ! -name "domains" ! -name "mail" ! -name "repo" ! -name "backups" ! -name ".*" -exec rm -rf {} + > /dev/null 2>&1
+          pkill -f "frps_start.sh" >/dev/null 2>&1
+          devil www del api.${USERNAME}.${CURRENT_DOMAIN} > /dev/null 2>&1
+          rm -rf $HOME/domains/api.${USERNAME}.${CURRENT_DOMAIN} > /dev/null 2>&1
+          green "\n系统初始化完成!\n"
+         ;;
+       *) menu ;;
+  esac
+}
+
+download_frps() {
+ARCH=$(uname -m) && DOWNLOAD_DIR="." && mkdir -p "$DOWNLOAD_DIR" && FILE_INFO=()
+if [ "$ARCH" == "arm" ] || [ "$ARCH" == "arm64" ] || [ "$ARCH" == "aarch64" ]; then
+    BASE_URL="https://github.com/eooce/test/releases/download/freebsd-arm64"
+elif [ "$ARCH" == "amd64" ] || [ "$ARCH" == "x86_64" ] || [ "$ARCH" == "x86" ]; then
+    BASE_URL="https://github.com/eooce/test/releases/download/freebsd"
+else
+    echo "Unsupported architecture: $ARCH"
+    exit 1
+fi
+FILE_INFO=("$BASE_URL/sb web")
+generate_random_name() {
+    local chars=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
+    local name=""
+    for i in {1..6}; do
+        name="$name${chars:RANDOM%${#chars}:1}"
+    done
+    echo "$name"
+}
+
+download_with_fallback() {
+    local URL=$1
+    local NEW_FILENAME=$2
+
+    curl -L -sS --max-time 2 -o "$NEW_FILENAME" "$URL" &
+    CURL_PID=$!
+    CURL_START_SIZE=$(stat -c%s "$NEW_FILENAME" 2>/dev/null || echo 0)
+    
+    sleep 1
+
+    CURL_CURRENT_SIZE=$(stat -c%s "$NEW_FILENAME" 2>/dev/null || echo 0)
+    
+    if [ "$CURL_CURRENT_SIZE" -le "$CURL_START_SIZE" ]; then
+        kill $CURL_PID 2>/dev/null
+        wait $CURL_PID 2>/dev/null
+        wget -q -O "$NEW_FILENAME" "$URL"
+        green "Downloading $NEW_FILENAME by wget"
+    else
+        wait $CURL_PID
+        green "Downloading $NEW_FILENAME by curl"
+    fi
+}
+
+for entry in "${FILE_INFO[@]}"; do
+    URL=$(echo "$entry" | cut -d ' ' -f 1)
+    KEY=$(echo "$entry" | cut -d ' ' -f 2) # 获取代号，例如 'web', 'npm', 'bot'
+
+    # 根据代号KEY来决定文件名
+    case "$KEY" in
+        web)
+            # frps 主程序
+            NEW_FILENAME="$DOWNLOAD_DIR/$BASENAME"
+            ;;
+        npm|php)
+            # 哪吒探针程序 (npm或php两种情况都包含)
+            NEW_FILENAME="$DOWNLOAD_DIR/$BASENAME-agent"
+            ;;
+        bot)
+            # 机器人程序
+            NEW_FILENAME="$DOWNLOAD_DIR/$BASENAME-bot"
+            ;;
+        *)
+            # 如果有未知的代号，使用随机名作为备用方案，防止出错
+            RANDOM_NAME=$BASENAME-$(generate_random_name)
+            NEW_FILENAME="$DOWNLOAD_DIR/$RANDOM_NAME"
+            ;;
+    esac
+
+    download_with_fallback "$URL" "$NEW_FILENAME"
+    
+    chmod +x "$NEW_FILENAME"
+    # 将代号和新的文件名（如frps, frps-agent）存入FILE_MAP
+    FILE_MAP[$KEY]="$NEW_FILENAME"
+done
+wait
+
+output=$(./"$(basename ${FILE_MAP[web]})" generate reality-keypair)
+private_key=$(echo "${output}" | awk '/PrivateKey:/ {print $2}')
+public_key=$(echo "${output}" | awk '/PublicKey:/ {print $2}')
+[[ "$PROXYIP" == "true" ]] && SNI="time.is" || SNI="www.cerebrium.ai"
+openssl ecparam -genkey -name prime256v1 -out "private.key"
+openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=api.$USERNAME.${CURRENT_DOMAIN}"
+  
+yellow "获取可用IP中,请稍等..."
+available_ip=$(get_ip)
+purple "当前选择IP为: $available_ip 如安装完后节点不通可尝试重新安装"
+  
+cat > config.json << EOF
+{
+  "log": {
+    "disabled": true,
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "address": "8.8.8.8",
+        "address_resolver": "local"
+      },
+      {
+        "tag": "local",
+        "address": "local"
+      }
+    ]
+  },
+  "inbounds": [
+    {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "$available_ip",
+       "listen_port": $HY2_PORT,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://bing.com",
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+    {
+        "tag": "vless-reality-vesion",
+        "type": "vless",
+        "listen": "$available_ip",
+        "listen_port": $VLESS_PORT,
+        "users": [
+            {
+              "uuid": "$UUID",
+              "flow": "xtls-rprx-vision"
+            }
+        ],
+        "tls": {
+            "enabled": true,
+            "server_name": "$SNI",
+            "reality": {
+                "enabled": true,
+                "handshake": {
+                    "server": "$SNI",
+                    "server_port": 443
+                },
+                "private_key": "$private_key",
+                "short_id": [
+                  ""
+                ]
+            }
+        }
+    },
+    {
+      "tag": "tuic-in",
+      "type": "tuic",
+      "listen": "$available_ip",
+      "listen_port": $TUIC_PORT,
+      "users": [
+        {
+          "uuid": "$UUID",
+          "password": "admin"
+        }
+      ],
+      "congestion_control": "bbr",
+      "tls": {
+        "enabled": true,
+        "alpn": [
+          "h3"
+        ],
+        "certificate_path": "cert.pem",
+        "key_path": "private.key"
+      }
+    }
+ ],
+EOF
+
+# 如果是s14/s15,google/youtube/spotify相关的服务走warp出站
+if [[ "$HOSTNAME" =~ s14|s15 ]]; then
+  cat >> config.json <<EOF
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    },
+    {
+      "type": "wireguard",
+      "tag": "wireguard-out",
+      "server": "162.159.192.200",
+      "server_port": 4500,
+      "local_address": [
+        "172.16.0.2/32",
+        "2606:4700:110:8f77:1ca9:f086:846c:5f9e/128"
+      ],
+      "private_key": "wIxszdR2nMdA7a2Ul3XQcniSfSZqdqjPb6w6opvf5AU=",
+      "peer_public_key": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+      "reserved": [126, 246, 173]
+    }
+  ],
+  "route": {
+    "rule_set": [
+      {
+        "tag": "youtube",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo-lite/geosite/youtube.srs",
+        "download_detour": "direct"
+      },
+      {
+        "tag": "google",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo-lite/geosite/google.srs",
+        "download_detour": "direct"
+      },
+      {
+        "tag": "spotify",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo-lite/geosite/spotify.srs",
+        "download_detour": "direct"
+      }
+    ],
+    "rules": [
+      {
+        "rule_set": ["google", "youtube", "spotify"],
+        "outbound": "wireguard-out"
+      }
+    ],
+    "final": "direct"
+  }
+}
+EOF
+else
+  cat >> config.json <<EOF
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    }
+  ]
+}
+EOF
+fi
+
+if [ -e "$(basename ${FILE_MAP[web]})" ]; then
+    nohup ./"$(basename ${FILE_MAP[web]})" run -c config.json >/dev/null 2>&1 &
+    sleep 2
+    pgrep -x "$(basename ${FILE_MAP[web]})" > /dev/null && green "$(basename ${FILE_MAP[web]}) is running" || { red "$(basename ${FILE_MAP[web]}) is not running, restarting..."; pkill -x "$(basename ${FILE_MAP[web]})" && nohup ./"$(basename ${FILE_MAP[web]})" run -c config.json >/dev/null 2>&1 & sleep 2; purple "$(basename ${FILE_MAP[web]}) restarted"; }
+fi
+
+
+
+}
+
+get_ip() {
+  IP_LIST=($(devil vhost list | awk '/^[0-9]+/ {print $1}'))
+  API_URL="https://status.eooce.com/api"
+  IP=""
+  THIRD_IP=${IP_LIST[2]}
+  RESPONSE=$(curl -s --max-time 2 "${API_URL}/${THIRD_IP}")
+  if [[ $(echo "$RESPONSE" | jq -r '.status') == "Available" ]]; then
+      IP=$THIRD_IP
+  else
+      FIRST_IP=${IP_LIST[0]}
+      RESPONSE=$(curl -s --max-time 2 "${API_URL}/${FIRST_IP}")
+      if [[ $(echo "$RESPONSE" | jq -r '.status') == "Available" ]]; then
+          IP=$FIRST_IP
+      else
+          IP=${IP_LIST[1]}
+      fi
+  fi
+echo "$IP"
+}
+
+generate_sub_link () {
+echo ""
+rm -rf ${FILE_PATH}/.htaccess
+base64 -w0 ${FILE_PATH}/list.txt > ${FILE_PATH}/v2.log
+PHP_URL="https://00.ssss.nyc.mn/sub.php"
+QR_URL="https://00.ssss.nyc.mn/qrencode"  
+$COMMAND "${FILE_PATH}/${SUB_TOKEN}.php" "$PHP_URL" 
+$COMMAND "${WORKDIR}/qrencode" "$QR_URL" && chmod +x "${WORKDIR}/qrencode"
+V2rayN_LINK="http://api.${USERNAME}.${CURRENT_DOMAIN}/v2.log"
+AUTO_LINK="http://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
+curl -sS "https://sublink.eooce.com/clash?config=${V2rayN_LINK}" -o ${FILE_PATH}/clash.yaml
+curl -sS "https://sublink.eooce.com/singbox?config=${V2rayN_LINK}" -o ${FILE_PATH}/singbox.yaml
+"${WORKDIR}/qrencode" -m 2 -t UTF8 "${AUTO_LINK}"
+purple "\n自适应节点订阅链接: ${AUTO_LINK}\n"
+green "二维码和节点订阅链接适用于 V2rayN/Nekoray/ShadowRocket/Clash/Mihomo/Sing-box/karing/Loon/sterisand 等\n\n"
+cat > ${FILE_PATH}/.htaccess << EOF
+RewriteEngine On
+DirectoryIndex index.html
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /(\?|$)
+RewriteRule ^$ /index.html [L]
+<FilesMatch "^(index\.html|${SUB_TOKEN}\.php)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+<FilesMatch "^(clash\.yaml|singbox\.yaml|list\.txt|v2\.log|sub\.php)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+RewriteRule ^${SUB_TOKEN}$ ${SUB_TOKEN}.php [L]
+EOF
+}
+
+install_keepalive () {
+    purple "正在安装保活服务中,请稍等......"
+    
+    # Create a configuration file for the keep-alive script
+    (
+    cat << EOF
+export UUID="$UUID"
+export VLESS_PORT="$VLESS_PORT"
+export TUIC_PORT="$TUIC_PORT"
+export HY2_PORT="$HY2_PORT"
+export PROXYIP="$PROXYIP"
+export USERNAME="$USERNAME"
+export CURRENT_DOMAIN="$CURRENT_DOMAIN"
+export private_key="$private_key"
+export public_key="$public_key"
+EOF
+    ) | base64 -w 0 > "${WORKDIR}/keepalive.conf"
+
+    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps_start.sh"
+    KEEPALIVE_SCRIPT_PATH="${WORKDIR}/frps_start.sh"
+
+    # Download the keep-alive script
+    $COMMAND "$KEEPALIVE_SCRIPT_PATH" "$KEEPALIVE_SCRIPT_URL"
+    if [ $? -ne 0 ]; then
+        red "下载保活脚本失败。"
+        exit 1
+    fi
+
+    chmod +x "$KEEPALIVE_SCRIPT_PATH"
+
+    # Kill any existing keep-alive script process
+    pkill -f "frps_start.sh" >/dev/null 2>&1
+
+    # Start the new keep-alive script in the background
+    nohup "$KEEPALIVE_SCRIPT_PATH" >"${WORKDIR}/keepalive.log" 2>&1 &
+    
+    sleep 2
+    if pgrep -f "frps_start.sh" > /dev/null; then
+        green "\n全自动保活服务安装成功\n"
+        
+        # Create a shortcut command for frps_start.sh
+        local keepalive_command="frps-start"
+        local keepalive_path="$HOME/bin/$keepalive_command"
+        mkdir -p "$HOME/bin"
+        cat > "$keepalive_path" << EOF
+#!/bin/bash
+
+# The path to the actual keep-alive script, derived from WORKDIR
+KEEPALIVE_SCRIPT_PATH="${WORKDIR}/frps_start.sh"
+
+# Check if the keep-alive script is already running
+if pgrep -f "frps_start.sh" > /dev/null; then
+    echo "frps 保活服务已经在运行中。"
+    exit 0
+fi
+
+# Kill any old instances just in case
+pkill -f "frps_start.sh" >/dev/null 2>&1
+
+# Start the new keep-alive script in the background
+nohup "\$KEEPALIVE_SCRIPT_PATH" >/dev/null 2>&1 &
+
+# Wait a moment and check if it started successfully
+sleep 2
+if pgrep -f "frps_start.sh" > /dev/null; then
+    echo "frps 保活服务已成功启动到后台。"
+else
+    echo "frps 保活服务启动失败。"
+fi
+EOF
+        chmod +x "$keepalive_path"
+
+        if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
+            echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
+            source "$HOME/.bashrc"
+        fi
+        green "快捷指令 ${keepalive_command} 创建成功, 下次可直接运行 ${keepalive_command} 来启动保活服务。\n"
+    else
+        red "\n全自动保活服务安装失败\n"
+    fi
+}
+
+get_links(){
+ISP=$(curl -s --max-time 2 https://speed.cloudflare.com/meta | awk -F\" '{print $26}' | sed -e 's/ /_/g' || echo "0")
+get_name() { if [ "$HOSTNAME" = "s1.ct8.pl" ]; then SERVER="CT8"; else SERVER=$(echo "$HOSTNAME" | cut -d '.' -f 1); fi; echo "$SERVER"; }
+NAME="$ISP-$(get_name)"
+yellow "注意：v2ray或其他软件的跳过证书验证需设置为true,否则hy2或tuic节点可能不通\n"
+cat > $FILE_PATH/list.txt <<EOF
+vless://$UUID@$available_ip:$VLESS_PORT?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$public_key&type=tcp&headerType=none#$NAME-reality
+
+hysteria2://$UUID@$available_ip:$HY2_PORT/?sni=www.bing.com&alpn=h3&insecure=1#$NAME-hysteria2
+
+tuic://$UUID:admin@$available_ip:$TUIC_PORT?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#$NAME-tuic
+EOF
+cat $FILE_PATH/list.txt
+[[ "$PROXYIP" == "true" ]] && purple "\n你的ProxyIP为: $available_ip:$VLESS_PORT"
+generate_sub_link
+install_keepalive
+rm -rf "$(basename ${FILE_MAP[web]})" config.json sb.log core fake_useragent_0.2.0.json private.key cert.pem
+quick_command
+green "Running done!\n"
+}
+
+quick_command() {
+  COMMAND="00"
+  SCRIPT_PATH="$HOME/bin/$COMMAND"
+  mkdir -p "$HOME/bin"
+  echo "#!/bin/bash" > "$SCRIPT_PATH"
+  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps.sh)" >> "$SCRIPT_PATH"
+  chmod +x "$SCRIPT_PATH"
+  if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
+      echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
+      source "$HOME/.bashrc"
+  fi
+green "快捷指令00创建成功,下次运行输入00快速进入菜单\n"
+}
+
+
+get_nodes(){
+cat ${FILE_PATH}/list.txt
+echo ""
+"${WORKDIR}/qrencode" -m 2 -t UTF8 "http://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
+yellow "\n自适应节点订阅链接: http://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
+}
+
+menu() {
+  clear
+  echo ""
+  purple "=== Serv00|ct8 frps一键三协议安装脚本 ===\n"
+  purple "转载请著名出处，请勿滥用\n"
+  yellow "快速启动命令00\n"
+  green "1. 安装三合一"
+  echo  "==============="
+  green "2. 查看节点信息"
+  echo  "==============="
+  yellow "3. 更换节点端口"
+  echo  "==============="
+  yellow "4. 初始化系统"
+  echo  "==============="
+  red "0. 退出脚本"
+  echo "==========="
+  reading "请输入选择(0-4): " choice
+  echo ""
+  case "${choice}" in
+      1) install_frps ;;
+      2) get_nodes ;;
+      3) changge_ports ;;
+      4) reset_system ;;
+      0) exit 0 ;;
+      *) red "无效的选项，请输入 0 到 4" ;;
+  esac
+}
+menu
