@@ -605,6 +605,8 @@ export HY2_PORT="$HY2_PORT"
 export PROXYIP="$PROXYIP"
 export USERNAME="$USERNAME"
 export CURRENT_DOMAIN="$CURRENT_DOMAIN"
+export private_key="$private_key"
+export public_key="$public_key"
 EOF
 
     KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps_start.sh"
