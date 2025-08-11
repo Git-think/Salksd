@@ -1,11 +1,7 @@
 #!/bin/bash
 
 # Get the directory where the script is located and cd into it
-case $0 in
-  /*) WORKDIR_PATH=$(dirname "$0") ;;
-  */*) WORKDIR_PATH=$(dirname "$0") ;;
-  *) WORKDIR_PATH=$(pwd) ;;
-esac
+WORKDIR_PATH=$(cd "$(dirname "$0")" && pwd)
 cd "$WORKDIR_PATH" || { echo "FATAL: Cannot cd to $WORKDIR_PATH"; exit 1; }
 
 LOG_FILE="./keepalive.log"
@@ -139,7 +135,7 @@ generate_config_file() {
         }
     },
     {
-        "tag": "vless-reality-version",
+        "tag": "vless-reality-vesion",
         "type": "vless",
         "listen": "$available_ip",
         "listen_port": $VLESS_PORT,
@@ -159,7 +155,6 @@ generate_config_file() {
                     "server_port": 443
                 },
                 "private_key": "$private_key",
-                "public_key": "$public_key",
                 "short_id": [
                   ""
                 ]
@@ -208,25 +203,25 @@ EOF
 log_message "Keep-alive service started."
 
 while true; do
-  # 1. Load config. If it fails, we can't proceed.
-  if ! load_config; then
-      sleep 300
-      continue
-  fi
-
-  # 2. Check for frps executable
-  if [ ! -f "$FRPS_EXEC" ]; then
-      if ! download_frps_binary; then
-          log_message "Will retry download in 5 minutes."
-          sleep 300
-          continue
-      fi
-  fi
-
-  # 3. Check if the process is running
   if ! pgrep -f "$FRPS_EXEC run" > /dev/null; then
-    log_message "frps process not found. Preparing to restart..."
+
+    # 1. Load config. If it fails, we can't proceed.
+    if ! load_config; then
+        sleep 300
+        continue
+    fi
     
+    log_message "frps process not found. Preparing to restart..."
+    # 2. Check for frps executable
+    if [ ! -f "$FRPS_EXEC" ]; then
+        if ! download_frps_binary; then
+            log_message "Will retry download in 5 minutes."
+            sleep 300
+            continue
+        fi
+    fi
+    
+    # 3. Check if the process is running
     # 3a. Generate the config file, as it's needed for restart
     generate_config_file
 
@@ -238,11 +233,11 @@ while true; do
     if pgrep -f "$FRPS_EXEC run" > /dev/null; then
         log_message "frps process restarted successfully. Cleaning up temporary files."
         rm -rf "$CONFIG_FILE" private.key cert.pem sb.log core fake_useragent_0.2.0.json
+        log_message "frps process is running."
     else
         log_message "Error: frps process failed to start after attempt."
     fi
   
-    log_message "frps process is running."
   fi
   
   sleep 300
