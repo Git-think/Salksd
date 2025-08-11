@@ -532,7 +532,7 @@ export public_key="$public_key"
 EOF
     ) | base64 -w 0 > "${WORKDIR}/keepalive.conf"
 
-    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps_start.sh"
+    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/frps/frps_start.sh"
     KEEPALIVE_SCRIPT_PATH="${WORKDIR}/frps_start.sh"
 
     # Download the keep-alive script
@@ -622,7 +622,7 @@ quick_command() {
   SCRIPT_PATH="$HOME/bin/$COMMAND"
   mkdir -p "$HOME/bin"
   echo "#!/bin/bash" > "$SCRIPT_PATH"
-  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/frps.sh)" >> "$SCRIPT_PATH"
+  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/frps/frps.sh)" >> "$SCRIPT_PATH"
   chmod +x "$SCRIPT_PATH"
   if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
       echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
