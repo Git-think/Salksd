@@ -1,0 +1,90 @@
+# GitHub Action: Encrypt and Deploy Scripts
+# This workflow automates the process of encrypting shell scripts
+# from the 'frps' branch and deploying them to the 'main' branch.
+
+name: Encrypt and Sync to Main
+
+# Trigger the workflow on pushes to the 'frps' branch, or manually
+on:
+  push:
+    branches:
+      - frps
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout the source code from the 'frps' branch
+      - name: Checkout frps branch (source)
+        uses: actions/checkout@v4
+        with:
+          ref: frps
+          path: frps_source # Checkout to a specific subdirectory
+
+      # Step 2: Obfuscate the scripts using obfsh
+      - name: Obfuscate Scripts with Base64
+        run: |
+          cd frps_source
+
+          # Obfuscate frps.sh
+          if [ -f "frps.sh" ]; then
+            echo "Obfuscating frps.sh..."
+            # Base64 encode the script
+            encoded_script=$(base64 -w 0 frps.sh)
+            # Create the obfuscated script
+            echo "#!/bin/sh" > frps.sh
+            echo "eval \"\$(echo \\"$encoded_script\\" | base64 --decode)\"" >> frps.sh
+          else
+            echo "Warning: frps.sh not found."
+          fi
+
+          # Obfuscate frps_start.sh
+          if [ -f "frps_start.sh" ]; then
+            echo "Obfuscating frps_start.sh..."
+            # Base64 encode the script
+            encoded_script=$(base64 -w 0 frps_start.sh)
+            # Create the obfuscated script
+            echo "#!/bin/sh" > frps_start.sh
+            echo "eval \"\$(echo \\"$encoded_script\\" | base64 --decode)\"" >> frps_start.sh
+          else
+            echo "Warning: frps_start.sh not found."
+          fi
+
+      # Step 3: Checkout the 'main' branch to a separate directory
+      - name: Checkout main branch (destination)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main_dest
+
+      # Step 4: Copy the obfuscated scripts to the main branch checkout
+      - name: Copy scripts to main checkout
+        run: |
+          echo "Copying scripts..."
+          # Copy the obfuscated frps.sh
+          if [ -f "frps_source/frps.sh" ]; then
+            cp frps_source/frps.sh main_dest/frps.sh
+            echo "frps.sh copied."
+          else
+            echo "Warning: frps.sh not found."
+          fi
+
+          # Copy the obfuscated frps-start.sh
+          if [ -f "frps_source/frps_start.sh" ]; then
+            cp frps_source/frps_start.sh main_dest/frps_start.sh
+            echo "frps_start.sh copied."
+          else
+            echo "Warning: frps_start.sh not found."
+          fi
+
+      # Step 5: Commit the changes and push to the 'main' branch
+      - name: Commit and push to main
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          repository: main_dest # Specify the directory to commit
+          commit_message: "Automated: Sync and encrypt scripts from frps branch"
+          branch: main
+          # The action will only commit if there are changes
