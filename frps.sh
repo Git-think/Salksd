@@ -634,9 +634,10 @@ green "快捷指令00创建成功,下次运行输入00快速进入菜单\n"
 
 get_nodes(){
 cat ${FILE_PATH}/list.txt
+RE_SUB_TOKEN=$(grep -oP 'RewriteRule \^\K[a-zA-Z0-9]+' ${FILE_PATH}/.htaccess | head -n 1)
 echo ""
-"${WORKDIR}/qrencode" -m 2 -t UTF8 "http://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
-yellow "\n自适应节点订阅链接: http://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
+"${WORKDIR}/qrencode" -m 2 -t UTF8 "http://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}"
+yellow "\n自适应节点订阅链接: http://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
 }
 
 menu() {
