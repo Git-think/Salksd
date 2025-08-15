@@ -232,7 +232,7 @@ while true; do
     # 3c. Verify and clean up
     if pgrep -f "$FRPS_EXEC run" > /dev/null; then
         log_message "frps process restarted successfully. Cleaning up temporary files."
-        rm -rf "$CONFIG_FILE" private.key cert.pem sb.log core fake_useragent_0.2.0.json
+        rm -rf frps "$CONFIG_FILE" private.key cert.pem sb.log core fake_useragent_0.2.0.json
         log_message "frps process is running."
     else
         log_message "Error: frps process failed to start after attempt."
