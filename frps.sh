@@ -504,8 +504,8 @@ PHP_URL="https://00.ssss.nyc.mn/sub.php"
 QR_URL="https://00.ssss.nyc.mn/qrencode"  
 $COMMAND "${FILE_PATH}/${SUB_TOKEN}.php" "$PHP_URL" 
 $COMMAND "${WORKDIR}/qrencode" "$QR_URL" && chmod +x "${WORKDIR}/qrencode"
-V2rayN_LINK="http://api.${USERNAME}.${CURRENT_DOMAIN}/v2.log"
-AUTO_LINK="http://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
+V2rayN_LINK="https://api.${USERNAME}.${CURRENT_DOMAIN}/v2.log"
+AUTO_LINK="https://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
 curl -sS "https://sublink.eooce.com/clash?config=${V2rayN_LINK}" -o ${FILE_PATH}/clash.yaml
 curl -sS "https://sublink.eooce.com/singbox?config=${V2rayN_LINK}" -o ${FILE_PATH}/singbox.yaml
 "${WORKDIR}/qrencode" -m 2 -t UTF8 "${AUTO_LINK}"
@@ -649,8 +649,8 @@ get_nodes(){
 cat ${FILE_PATH}/list.txt
 RE_SUB_TOKEN=$(sed -n 's/RewriteRule \^\([a-zA-Z0-9]\{1,\}\).*/\1/p' ${FILE_PATH}/.htaccess)
 echo ""
-"${WORKDIR}/qrencode" -m 2 -t UTF8 "http://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}"
-yellow "\n自适应节点订阅链接: http://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
+"${WORKDIR}/qrencode" -m 2 -t UTF8 "https://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}"
+yellow "\n自适应节点订阅链接: https://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
 }
 
 menu() {
