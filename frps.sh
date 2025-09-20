@@ -282,6 +282,7 @@ public_key=$(echo "${output}" | awk '/PublicKey:/ {print $2}')
 openssl ecparam -genkey -name prime256v1 -out "private.key"
 openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=api.$USERNAME.${CURRENT_DOMAIN}"
   
+add_ssl_cert
 yellow "获取可用IP中,请稍等..."
 available_ip=$(get_ip)
 purple "当前选择IP为: $available_ip 如安装完后节点不通可尝试重新安装"
@@ -481,6 +482,18 @@ get_ip() {
       fi
   fi
 echo "$IP"
+}
+
+add_ssl_cert() {
+  local IP=$(devil vhost list | awk '/^[0-9]/ {print $1; exit}')
+  local DOMAIN="api.${USERNAME}.${CURRENT_DOMAIN}"
+  yellow "正在为域名 ${DOMAIN} 申请证书..."
+  devil ssl www del "${IP}" "${DOMAIN}" >/dev/null 2>&1
+  if devil ssl www add "${IP}" le le "${DOMAIN}"; then
+    green "证书申请成功！"
+  else
+    red "证书申请失败。"
+  fi
 }
 
 generate_sub_link () {
