@@ -199,10 +199,39 @@ EOF
 }
 
 
+check_ssl_cert() {
+    log_message "Checking SSL certificate..."
+    local CERT_INFO=$(devil ssl www list | grep "api.${USERNAME}.${CURRENT_DOMAIN}")
+    if [ -n "$CERT_INFO" ]; then
+        local EXPIRE_DATE=$(echo "$CERT_INFO" | awk '{print $3}')
+        local IP_ADDRESS=$(echo "$CERT_INFO" | awk '{print $5}')
+        local DOMAIN=$(echo "$CERT_INFO" | awk '{print $7}')
+
+        local EXPIRE_TIMESTAMP=$(date -j -f "%Y.%m.%d" "$EXPIRE_DATE" "+%s")
+        local CURRENT_TIMESTAMP=$(date "+%s")
+        local DAYS_TO_EXPIRE=$(( (EXPIRE_TIMESTAMP - CURRENT_TIMESTAMP) / 86400 ))
+
+        if [ "$DAYS_TO_EXPIRE" -lt 30 ]; then
+            log_message "Certificate for $DOMAIN is expiring in $DAYS_TO_EXPIRE days. Renewing..."
+            devil ssl www del "$IP_ADDRESS" "$DOMAIN" >/dev/null 2>&1
+            if devil ssl www add "$IP_ADDRESS" le le "$DOMAIN"; then
+                log_message "Certificate for $DOMAIN renewed successfully."
+            else
+                log_message "Failed to renew certificate for $DOMAIN."
+            fi
+        else
+            log_message "Certificate for $DOMAIN is valid for $DAYS_TO_EXPIRE more days."
+        fi
+    else
+        log_message "No SSL certificate found for api.${USERNAME}.${CURRENT_DOMAIN}."
+    fi
+}
+
 # --- Main Loop ---
 log_message "Keep-alive service started."
 
 while true; do
+  check_ssl_cert
   if ! pgrep -f "$FRPS_EXEC run" > /dev/null; then
 
     # 1. Load config. If it fails, we can't proceed.
