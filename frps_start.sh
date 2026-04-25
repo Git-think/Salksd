@@ -198,7 +198,6 @@ EOF
     log_message "config.json generated successfully."
 }
 
-
 check_ssl_cert() {
     log_message "Checking SSL certificate..."
     local CERT_INFO=$(devil ssl www list | grep "api.${USERNAME}.${CURRENT_DOMAIN}")
@@ -227,6 +226,68 @@ check_ssl_cert() {
     fi
 }
 
+# --- Ensure Required Ports ---
+# Check currently opened ports, remove unnecessary ones,
+# and add missing required ports (max 3 ports allowed)
+ensure_required_ports() {
+    log_message "Checking required ports..."
+
+    # Required ports definition: type:port
+    local required_ports=(
+        "udp:$HY2_PORT"
+        "tcp:$VLESS_PORT"
+        "udp:$TUIC_PORT"
+    )
+
+    # Build required port set
+    declare -A REQUIRED_SET
+    local item type port
+    for item in "${required_ports[@]}"; do
+        type="${item%%:*}"
+        port="${item##*:}"
+        [ -n "$type" ] && [ -n "$port" ] && REQUIRED_SET["$type:$port"]=1
+    done
+
+    # Get currently opened ports
+    local CURRENT_PORTS
+    CURRENT_PORTS=$(devil port list | awk 'NR>1 && $1 ~ /^[0-9]+$/ && $2 ~ /^(tcp|udp)$/ {print $2 ":" $1}')
+
+    # --- Remove Unnecessary Ports ---
+    for item in $CURRENT_PORTS; do
+        if [ -z "${REQUIRED_SET[$item]}" ]; then
+            type="${item%%:*}"
+            port="${item##*:}"
+            log_message "Port ${port}/${type} is not required. Deleting..."
+            if devil port del "$type" "$port" >/dev/null 2>&1; then
+                log_message "Port ${port}/${type} deleted successfully."
+            else
+                log_message "Failed to delete port ${port}/${type}."
+            fi
+        fi
+    done
+
+    # Refresh current ports after deletion
+    CURRENT_PORTS=$(devil port list | awk 'NR>1 && $1 ~ /^[0-9]+$/ && $2 ~ /^(tcp|udp)$/ {print $2 ":" $1}')
+
+    # --- Add Missing Required Ports ---
+    for item in "${!REQUIRED_SET[@]}"; do
+        if ! echo "$CURRENT_PORTS" | grep -Fxq "$item"; then
+            type="${item%%:*}"
+            port="${item##*:}"
+            log_message "Port ${port}/${type} is missing. Adding..."
+            if devil port add "$type" "$port" >/dev/null 2>&1; then
+                log_message "Port ${port}/${type} added successfully."
+            else
+                log_message "Failed to add port ${port}/${type}."
+            fi
+        else
+            log_message "Port ${item##*:}/${item%%:*} already exists."
+        fi
+    done
+
+    log_message "Port check completed."
+}
+
 # --- Main Loop ---
 log_message "Keep-alive service started."
 
@@ -253,6 +314,9 @@ while true; do
     # 3. Check if the process is running
     # 3a. Generate the config file, as it's needed for restart
     generate_config_file
+
+    # 3a.1 Ensure required ports are correctly configured
+    ensure_required_ports
 
     # 3b. Start the process
     nohup "$FRPS_EXEC" run -c "$CONFIG_FILE" >/dev/null 2>&1 &
