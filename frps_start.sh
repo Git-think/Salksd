@@ -203,9 +203,9 @@ check_ssl_cert() {
     log_message "Checking SSL certificate..."
     local CERT_INFO=$(devil ssl www list | grep "api.${USERNAME}.${CURRENT_DOMAIN}")
     if [ -n "$CERT_INFO" ]; then
-        local EXPIRE_DATE=$(echo "$CERT_INFO" | awk '{print $3}')
-        local IP_ADDRESS=$(echo "$CERT_INFO" | awk '{print $5}')
-        local DOMAIN=$(echo "$CERT_INFO" | awk '{print $7}')
+        local EXPIRE_DATE=$(echo "$CERT_INFO" | awk '{print $4}')
+        local IP_ADDRESS=$(echo "$CERT_INFO" | awk '{print $6}')
+        local DOMAIN=$(echo "$CERT_INFO" | awk '{print $8}')
 
         local EXPIRE_TIMESTAMP=$(date -j -f "%Y.%m.%d" "$EXPIRE_DATE" "+%s")
         local CURRENT_TIMESTAMP=$(date "+%s")
