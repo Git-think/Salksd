@@ -37,6 +37,8 @@ KEY_FILE="${DATA_DIR}/private.key"
 META_FILE="${DATA_DIR}/meta.conf"
 CERT_HOST="api.${USERNAME}.${CURRENT_DOMAIN}"
 SUB_SCHEMA=2
+# 下载的可执行文件只在本次运行期间存在。
+trap 'rm -f "${WORKDIR}/unbound"' EXIT
 
 load_meta() {
     [ -s "$META_FILE" ] || return 1
