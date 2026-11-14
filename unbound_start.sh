@@ -1,12 +1,96 @@
 #!/bin/bash
 
 # Get the directory where the script is located and cd into it
-WORKDIR_PATH=$(cd "$(dirname "$0")" && pwd)
+WORKDIR_PATH="${SALKSD_WORKDIR:-$(cd "$(dirname "$0")" && pwd)}"
 cd "$WORKDIR_PATH" || { echo "FATAL: Cannot cd to $WORKDIR_PATH"; exit 1; }
 
 LOG_FILE="./keepalive.log"
 CONFIG_FILE="./unbound.conf"
 UNBOUND_EXEC="./unbound"
+DATA_DIR="${HOME}/.config/salksd-unbound"
+CERT_FILE="${DATA_DIR}/cert.pem"
+KEY_FILE="${DATA_DIR}/private.key"
+META_FILE="${DATA_DIR}/meta.conf"
+
+load_meta() {
+    [ -s "$META_FILE" ] || return 1
+    eval "$(base64 -d < "$META_FILE")" || return 1
+    [ -z "${UUID:-}" ] || export UUID
+    [ -z "${SUB_TOKEN:-}" ] || export SUB_TOKEN
+    private_key="${REALITY_PRIVATE_KEY:-${private_key:-}}"
+    public_key="${REALITY_PUBLIC_KEY:-${public_key:-}}"
+}
+
+save_meta() {
+    mkdir -p "$DATA_DIR" && chmod 700 "$DATA_DIR" || return 1
+    local tmp="${META_FILE}.tmp.$$"
+    {
+        printf 'export UUID=%q\n' "$UUID"
+        printf 'export SUB_TOKEN=%q\n' "${SUB_TOKEN:-${UUID:0:8}}"
+        printf 'export REALITY_PRIVATE_KEY=%q\n' "${REALITY_PRIVATE_KEY:-$private_key}"
+        printf 'export REALITY_PUBLIC_KEY=%q\n' "${REALITY_PUBLIC_KEY:-$public_key}"
+        printf 'export AVAILABLE_IP=%q\n' "${AVAILABLE_IP:-$available_ip}"
+        printf 'export NODE_NAME=%q\n' "${NODE_NAME:-}"
+        printf 'export SUB_SCHEMA=%q\n' "${SUB_SCHEMA:-0}"
+    } | base64 | tr -d '\r\n' > "$tmp"
+    chmod 600 "$tmp" && mv -f "$tmp" "$META_FILE"
+}
+
+cert_pair_ok() {
+    local a b
+    [ -s "$1" ] && [ -s "$2" ] || return 1
+    openssl x509 -in "$1" -noout >/dev/null 2>&1 || return 1
+    openssl pkey -in "$2" -noout >/dev/null 2>&1 || return 1
+    a=$(openssl x509 -in "$1" -noout -pubkey 2>/dev/null | openssl pkey -pubin -outform DER 2>/dev/null | openssl dgst -sha256) || return 1
+    b=$(openssl pkey -in "$2" -pubout -outform DER 2>/dev/null | openssl dgst -sha256) || return 1
+    [ -n "$a" ] && [ "$a" = "$b" ]
+}
+
+cert_ok() {
+    local san name subj found=0
+    cert_pair_ok "$CERT_FILE" "$KEY_FILE" || return 1
+    san=$(openssl x509 -in "$CERT_FILE" -noout -text 2>/dev/null | sed -n '/Subject Alternative Name/{n;p;}') || return 1
+    while IFS= read -r name; do
+        name="${name//[[:space:]]/}"
+        if [[ "${name,,}" == "dns:${CERT_HOST,,}" ]]; then found=1; break; fi
+    done < <(printf '%s\n' "$san" | tr ',' '\n')
+    [ "$found" -eq 1 ] || return 1
+    subj=$(openssl x509 -in "$CERT_FILE" -noout -subject 2>/dev/null)
+    printf '%s\n' "$subj" | grep -Fq "CN=$CERT_HOST" || printf '%s\n' "$subj" | grep -Fq "CN = $CERT_HOST" || return 1
+    openssl verify -CAfile "$CERT_FILE" -purpose sslserver "$CERT_FILE" >/dev/null 2>&1
+}
+
+ensure_certificate() {
+    mkdir -p "$DATA_DIR" && chmod 700 "$DATA_DIR"
+    cert_ok && return 0
+    if [ ! -s "$CERT_FILE" ] && [ -s "${WORKDIR_PATH}/cert.pem" ] && [ -s "${WORKDIR_PATH}/private.key" ]; then
+        cp -f "${WORKDIR_PATH}/cert.pem" "$CERT_FILE" && cp -f "${WORKDIR_PATH}/private.key" "$KEY_FILE"
+        chmod 600 "$CERT_FILE" "$KEY_FILE"
+        cert_ok && return 0
+    fi
+    mkdir -p "${DATA_DIR}/legacy" && chmod 700 "${DATA_DIR}/legacy"
+    local ts; ts=$(date +%Y%m%d%H%M%S)
+    [ ! -s "$CERT_FILE" ] || cp -p "$CERT_FILE" "${DATA_DIR}/legacy/cert.pem.${ts}"
+    [ ! -s "$KEY_FILE" ] || cp -p "$KEY_FILE" "${DATA_DIR}/legacy/private.key.${ts}"
+    if [ ! -s "$KEY_FILE" ]; then
+        openssl ecparam -genkey -name prime256v1 -out "$KEY_FILE" >/dev/null 2>&1 || return 1
+    fi
+    {
+        echo "[req]"; echo "prompt = no"; echo "distinguished_name = dn"; echo "x509_extensions = v3"
+        echo "[dn]"; echo "CN = $CERT_HOST"
+        echo "[v3]"; echo "basicConstraints = critical,CA:FALSE"
+        echo "keyUsage = critical,digitalSignature"
+        echo "extendedKeyUsage = serverAuth"
+        echo "subjectKeyIdentifier = hash"
+        echo "authorityKeyIdentifier = keyid:always"
+        echo "subjectAltName = DNS:$CERT_HOST"
+    } > "${DATA_DIR}/openssl.cnf"
+    openssl req -new -x509 -sha256 -days 3650 -key "$KEY_FILE" -out "${CERT_FILE}.new" \
+        -config "${DATA_DIR}/openssl.cnf" >/dev/null 2>&1 || return 1
+    mv -f "${CERT_FILE}.new" "$CERT_FILE" && chmod 600 "$CERT_FILE" "$KEY_FILE"
+    cert_ok
+}
+
 
 # --- Logging Function ---
 log_message() {
@@ -20,7 +104,9 @@ load_config() {
     if [ -f "$conf_file" ]; then
         # Decode the entire file content and evaluate it to export variables
         eval "$(base64 -d < "$conf_file")"
-        
+        load_meta || true
+        CERT_HOST="api.${USERNAME}.${CURRENT_DOMAIN}"
+        [ -n "${REALITY_SNI:-}" ] || { [[ "${PROXYIP:-false}" == true ]] && REALITY_SNI=time.is || REALITY_SNI=www.cerebrium.ai; }
         return 0
     else
         log_message "Error: Configuration file not found at $conf_file."
@@ -63,10 +149,10 @@ download_unbound_binary() {
         log_message "Unsupported architecture: $ARCH"
         return 1
     fi
-    
+
     local unbound_url="$BASE_URL/sb"
     curl -L -sS --max-time 10 -o "$UNBOUND_EXEC" "$unbound_url" || wget -q -O "$UNBOUND_EXEC" "$unbound_url"
-    
+
     if [ -f "$UNBOUND_EXEC" ]; then
         chmod +x "$UNBOUND_EXEC"
         log_message "unbound executable downloaded successfully."
@@ -81,16 +167,13 @@ download_unbound_binary() {
 # Logic from sb.sh to generate unbound.conf
 generate_config_file() {
     log_message "unbound.conf not found. Generating..."
-    
-    # Generate certificates
-    
+
     [[ "$PROXYIP" == "true" ]] && SNI="time.is" || SNI="www.cerebrium.ai"
-    
-    openssl ecparam -genkey -name prime256v1 -out "private.key" >/dev/null 2>&1
-    openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=api.$USERNAME.${CURRENT_DOMAIN}" >/dev/null 2>&1
-      
+    CERT_HOST="api.${USERNAME}.${CURRENT_DOMAIN}"
+    ensure_certificate || { log_message "TLS identity check failed."; return 1; }
+    save_meta
     log_message "Getting available IP..."
-    available_ip=$(get_ip)
+    available_ip="${AVAILABLE_IP:-$(get_ip)}"
     log_message "Using IP: $available_ip"
 
     # Create unbound.conf
@@ -104,8 +187,7 @@ generate_config_file() {
   "dns": {
     "servers": [
       {
-        "address": "8.8.8.8",
-        "address_resolver": "local"
+        "address": "8.8.8.8"
       },
       {
         "tag": "local",
@@ -130,8 +212,8 @@ generate_config_file() {
          "alpn": [
              "h3"
          ],
-         "certificate_path": "cert.pem",
-         "key_path": "private.key"
+         "certificate_path": "$CERT_FILE",
+         "key_path": "$KEY_FILE"
         }
     },
     {
@@ -178,8 +260,8 @@ generate_config_file() {
         "alpn": [
           "h3"
         ],
-        "certificate_path": "cert.pem",
-        "key_path": "private.key"
+        "certificate_path": "$CERT_FILE",
+        "key_path": "$KEY_FILE"
       }
     }
  ],
@@ -223,6 +305,17 @@ check_ssl_cert() {
         fi
     else
         log_message "No SSL certificate found for api.${USERNAME}.${CURRENT_DOMAIN}."
+    fi
+}
+
+sync_subscriptions() {
+    local fp old
+    fp=$(openssl x509 -in "$CERT_FILE" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2 | tr -d ':\r\n' | tr 'A-F' 'a-f')
+    old=$(jq -r '.fingerprint // ""' "$DATA_DIR/data/bundle.json" 2>/dev/null)
+    if [ -n "$fp" ] && [ "$fp" != "$old" ]; then
+        curl -fLsS --proto '=https' --proto-redir '=https' --max-time 60 \
+            https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/unbound.sh | bash -s -- --publish >>"$LOG_FILE" 2>&1 || true
+        load_meta || true
     fi
 }
 
@@ -288,6 +381,10 @@ ensure_required_ports() {
     log_message "Port check completed."
 }
 
+if [[ "${SALKSD_START_LIBRARY:-0}" == 1 ]]; then
+    return 0
+fi
+
 # --- Main Loop ---
 log_message "Keep-alive service started."
 
@@ -300,7 +397,7 @@ while true; do
         sleep 20
         continue
     fi
-    
+
     log_message "unbound process not found. Preparing to restart..."
     # 2. Check for unbound executable
     if [ ! -f "$UNBOUND_EXEC" ]; then
@@ -310,10 +407,18 @@ while true; do
             continue
         fi
     fi
-    
+
     # 3. Check if the process is running
     # 3a. Generate the config file, as it's needed for restart
     generate_config_file
+
+    # Old deployment: load the current main script online once to migrate subscriptions.
+    if [ "${SUB_SCHEMA:-0}" -lt 2 ]; then
+        curl -fLsS --proto '=https' --proto-redir '=https' --max-time 60 \
+            https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/unbound.sh | bash -s -- --publish >>"$LOG_FILE" 2>&1 || true
+        load_meta || true
+    fi
+    sync_subscriptions
 
     # 3a.1 Ensure required ports are correctly configured
     ensure_required_ports
@@ -330,8 +435,8 @@ while true; do
     else
         log_message "Error: unbound process failed to start after attempt."
     fi
-  
+
   fi
-  
+
   sleep 300
 done
