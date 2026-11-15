@@ -753,7 +753,7 @@ export SUB_SCHEMA="$SUB_SCHEMA"
 EOF
     ) | base64 -w 0 > "${WORKDIR}/keepalive.conf"
 
-    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/unbound_start.sh"
+    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/unbound/unbound_start.sh"
     KEEPALIVE_SCRIPT_PATH="${WORKDIR}/unbound_start.sh"
 
     # Download the keep-alive script
