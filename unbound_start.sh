@@ -1,7 +1,16 @@
 #!/bin/bash
 
+# SALKSD LIBRARY BEGIN
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/unbound-secure.sh" || {
+    echo '请使用 unbound 分支的完整混淆脚本，或在源码仓库内运行。' >&2
+    exit 1
+}
+# SALKSD LIBRARY END
+
 # Get the directory where the script is located and cd into it
-WORKDIR_PATH=$(cd "$(dirname "$0")" && pwd)
+WORKDIR_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+WORKDIR="$WORKDIR_PATH"
+FILE_PATH="$(dirname "$WORKDIR")/public_html"
 cd "$WORKDIR_PATH" || { echo "FATAL: Cannot cd to $WORKDIR_PATH"; exit 1; }
 
 LOG_FILE="./keepalive.log"
@@ -65,7 +74,7 @@ download_unbound_binary() {
     fi
     
     local unbound_url="$BASE_URL/sb"
-    curl -L -sS --max-time 10 -o "$UNBOUND_EXEC" "$unbound_url" || wget -q -O "$UNBOUND_EXEC" "$unbound_url"
+    curl -fL -sS --max-time 10 -o "$UNBOUND_EXEC" "$unbound_url" || wget -q -O "$UNBOUND_EXEC" "$unbound_url" || return 1
     
     if [ -f "$UNBOUND_EXEC" ]; then
         chmod +x "$UNBOUND_EXEC"
@@ -86,11 +95,11 @@ generate_config_file() {
     
     [[ "$PROXYIP" == "true" ]] && SNI="time.is" || SNI="www.cerebrium.ai"
     
-    openssl ecparam -genkey -name prime256v1 -out "private.key" >/dev/null 2>&1
-    openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=api.$USERNAME.${CURRENT_DOMAIN}" >/dev/null 2>&1
+    secure_prepare_certificate || return 1
       
     log_message "Getting available IP..."
-    available_ip=$(get_ip)
+    available_ip=${available_ip:-$(get_ip)}
+    secure_validate_state || return 1
     log_message "Using IP: $available_ip"
 
     # Create unbound.conf
@@ -173,6 +182,7 @@ generate_config_file() {
         }
       ],
       "congestion_control": "bbr",
+      "zero_rtt_handshake": false,
       "tls": {
         "enabled": true,
         "alpn": [
@@ -195,6 +205,7 @@ generate_config_file() {
   ]
 }
 EOF
+    secure_capture_config "$CONFIG_FILE" || return 1
     log_message "unbound.conf generated successfully."
 }
 
@@ -289,49 +300,52 @@ ensure_required_ports() {
 }
 
 # --- Main Loop ---
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return 0
+fi
+case "${1:-}" in
+    --share-watch) secure_init && secure_share_watch "${2:-}"; exit $? ;;
+    --restart|--change-ports) secure_operation "$1" "${2:-all}"; exit $? ;;
+esac
 log_message "Keep-alive service started."
 
 while true; do
-  check_ssl_cert
-  if ! pgrep -f "$UNBOUND_EXEC run" > /dev/null; then
-
-    # 1. Load config. If it fails, we can't proceed.
-    if ! load_config; then
-        sleep 20
-        continue
+  if load_config; then
+    secure_init || exit 1
+    check_ssl_cert
+  else
+    sleep 20
+    continue
+  fi
+  secure_init || exit 1
+  if [[ -d "$SECURE_STATE/operation.lock" ]]; then
+    sleep 20
+    continue
+  fi
+  if [[ -s "$SECURE_STATE/published-fingerprint" ]]; then
+    current_fingerprint=$(openssl x509 -in "$SECURE_STATE/cert.pem" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f')
+    if [[ "$current_fingerprint" != "$(cat "$SECURE_STATE/published-fingerprint")" ]]; then
+        # Identity changes require a restart so publication and the served certificate agree.
+        exec "$WORKDIR/unbound_start.sh" --restart
     fi
-    
-    log_message "unbound process not found. Preparing to restart..."
-    # 2. Check for unbound executable
-    if [ ! -f "$UNBOUND_EXEC" ]; then
-        if ! download_unbound_binary; then
-            log_message "Will retry download in 20s"
-            sleep 20
-            continue
-        fi
+  fi
+  secure_shares_poll || :
+  if [[ -z "$(secure_core_pids)" ]]; then
+    secure_backup && secure_restore_identity && secure_prepare_certificate || { sleep 20; continue; }
+    [[ -f "$UNBOUND_EXEC" ]] || download_unbound_binary || { sleep 20; continue; }
+    if [[ -f "$SECURE_STATE/server.json" ]]; then
+        cp "$SECURE_STATE/server.json" "$CONFIG_FILE"
+    else
+        generate_config_file || { sleep 20; continue; }
     fi
-    
-    # 3. Check if the process is running
-    # 3a. Generate the config file, as it's needed for restart
-    generate_config_file
-
-    # 3a.1 Ensure required ports are correctly configured
     ensure_required_ports
-
-    # 3b. Start the process
-    nohup "$UNBOUND_EXEC" run -c "$CONFIG_FILE" >/dev/null 2>&1 &
-    sleep 2 # Wait a moment for the process to start
-
-    # 3c. Verify and clean up
-    if pgrep -f "$UNBOUND_EXEC run" > /dev/null; then
-        log_message "unbound process restarted successfully. Cleaning up temporary files."
-        rm -rf unbound "$CONFIG_FILE" private.key cert.pem sb.log core fake_useragent_0.2.0.json
+    if secure_start_core; then
+        secure_capture_config "$CONFIG_FILE" && secure_publish && secure_refresh_legacy || log_message "Subscription update failed."
+        secure_cleanup_runtime
         log_message "unbound process is running."
     else
         log_message "Error: unbound process failed to start after attempt."
     fi
-  
   fi
-  
-  sleep 300
+  secure_panel_wait
 done

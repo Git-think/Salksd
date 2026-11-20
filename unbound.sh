@@ -10,6 +10,13 @@ green() { echo -e "\e[1;32m$1\033[0m"; }
 yellow() { echo -e "\e[1;33m$1\033[0m"; }
 purple() { echo -e "\e[1;35m$1\033[0m"; }
 reading() { read -p "$(red "$1")" "$2"; }
+# SALKSD LIBRARY BEGIN
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/unbound-secure.sh" || {
+    echo '请使用 unbound 分支的完整混淆脚本，或在源码仓库内运行。' >&2
+    exit 1
+}
+# SALKSD LIBRARY END
+
 export LC_ALL=C
 HOSTNAME=$(hostname)
 USERNAME=$(whoami | tr '[:upper:]' '[:lower:]')
@@ -17,7 +24,7 @@ export UUID=${UUID:-$(uuidgen)}
 export NEZHA_SERVER=${NEZHA_SERVER:-''} 
 export NEZHA_PORT=${NEZHA_PORT:-''}     
 export NEZHA_KEY=${NEZHA_KEY:-''} 
-export SUB_TOKEN=${SUB_TOKEN:-${UUID:0:8}}
+export SUB_TOKEN=${SUB_TOKEN:-''} # Existing tokens are recovered; new installations use 256 random bits.
 export UPLOAD_URL=${UPLOAD_URL:-''}  # 订阅自动添加到汇聚订阅器，需要先部署Merge-sub项目,环境变量填写部署后的首页地址,例如: UPLOAD_URL=https://merge.serv00.net
 
 if [[ "$HOSTNAME" =~ ct8 ]]; then
@@ -29,6 +36,7 @@ else
 fi
 WORKDIR="${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/logs"
 FILE_PATH="${HOME}/domains/api.${USERNAME}.${CURRENT_DOMAIN}/public_html"
+TLS_SERVER_NAME="api.${USERNAME}.${CURRENT_DOMAIN}"
 mkdir -p "$FILE_PATH" && chmod 777 "$WORKDIR" "$FILE_PATH" >/dev/null 2>&1
 command -v curl &>/dev/null && COMMAND="curl -so" || command -v wget &>/dev/null && COMMAND="wget -qO" || { red "Error: neither curl nor wget found, please install one of them." >&2; exit 1; }
 
@@ -123,36 +131,32 @@ else
     fi
 fi
 
-index_url="https://github.com/eooce/Sing-box/releases/download/00/index.html"
-[ -f "${FILE_PATH}/index.html" ] || $COMMAND "${FILE_PATH}/index.html" "$index_url"
+secure_install_landing || return 1
+}
+
+secure_fetch_worker() {
+    secure_init && secure_backup || return 1
+    local candidate="$WORKDIR/unbound_start.sh.new"
+    if [[ -n "${SALKSD_WORKER_SOURCE:-}" ]]; then
+        cp "$SALKSD_WORKER_SOURCE" "$candidate" || return 1
+    else
+        curl -fLsS --retry 2 -o "$candidate" "https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/unbound/unbound_start.sh" || return 1
+    fi
+    bash -n "$candidate" || return 1
+    chmod 700 "$candidate"
+    mv "$candidate" "$WORKDIR/unbound_start.sh"
+}
+
+restart_unbound() {
+    secure_fetch_worker && bash "$WORKDIR/unbound_start.sh" --restart
 }
 
 changge_ports() {
-reading "将删除全部端口然后随机开放1个tcp端口和2个udp端口,确定继续吗?(直接回车即确认更换)【y/n】: " choice
-
-if [[ -z "$choice" || "$choice" == "y" || "$choice" == "Y" ]]; then
-    devil port list | grep -E "^\s*[0-9]+" | while read -r line; do
-        port=$(echo "$line" | awk '{print $1}')
-        proto=$(echo "$line" | awk '{print $2}')
-
-        if [[ "$proto" != "tcp" && "$proto" != "udp" ]]; then
-            continue
-        fi
-
-        if ! [[ "$port" =~ ^[0-9]+$ ]]; then
-            continue
-        fi
-
-        if devil port del "${proto}" "${port}" > /dev/null 2>&1; then
-            green "Port ${port}/${proto} has been removed successfully"
-        else
-            red "Failed to remove port ${port}/${proto}"
-        fi
-    done
-    check_port
-else
-    menu  
-fi
+    reading "更换本服务的三个端口并保留订阅地址，确定继续吗？【y/n】: " choice
+    case "${choice:-y}" in
+        [Yy]) secure_fetch_worker && bash "$WORKDIR/unbound_start.sh" --change-ports ;;
+        *) menu ;;
+    esac
 }
 
 read_variables() {
@@ -164,6 +168,13 @@ read_variables() {
 
 install_unbound() {
 declare -A FILE_MAP
+secure_init && secure_backup || return 1
+if [[ -s "$WORKDIR/keepalive.conf" ]]; then
+    eval "$(base64 -d < "$WORKDIR/keepalive.conf")"
+    secure_restore_identity || return 1
+fi
+# Persist a usable existing pair before the baseline clears WORKDIR.
+secure_prepare_certificate || return 1
 rm -rf "$WORKDIR" && mkdir -p "$WORKDIR" "$FILE_PATH" && chmod 777 "$WORKDIR" "$FILE_PATH" >/dev/null 2>&1
 bash -c 'ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk "{print \$2}" | xargs -r kill -9 >/dev/null 2>&1' >/dev/null 2>&1
 echo -e "${yellow}本脚本同时三协议共存${purple}(vless-reality,hysteria2,tuic)${re}"
@@ -279,12 +290,12 @@ output=$(./"$(basename ${FILE_MAP[web]})" generate reality-keypair)
 private_key=$(echo "${output}" | awk '/PrivateKey:/ {print $2}')
 public_key=$(echo "${output}" | awk '/PublicKey:/ {print $2}')
 [[ "$PROXYIP" == "true" ]] && SNI="time.is" || SNI="www.cerebrium.ai"
-openssl ecparam -genkey -name prime256v1 -out "private.key"
-openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=api.$USERNAME.${CURRENT_DOMAIN}"
+secure_prepare_certificate || return 1
   
 add_ssl_cert
 yellow "获取可用IP中,请稍等..."
 available_ip=$(get_ip)
+secure_validate_state || { red "现有认证、Reality 密钥、IP 或端口格式无效，停止生成配置。"; return 1; }
 purple "当前选择IP为: $available_ip 如安装完后节点不通可尝试重新安装"
   
 cat > unbound.conf << EOF
@@ -366,6 +377,7 @@ cat > unbound.conf << EOF
         }
       ],
       "congestion_control": "bbr",
+      "zero_rtt_handshake": false,
       "tls": {
         "enabled": true,
         "alpn": [
@@ -454,10 +466,19 @@ else
 EOF
 fi
 
+secure_shares_apply unbound.conf || return 1
+if jq -e --argjson now "$(date +%s)" 'any(.[]; .revoked_at==0 and .expires_at>$now)' "$SECURE_STATE/shares.json" >/dev/null; then
+    secure_fetch_worker || return 1
+fi
+secure_capture_config unbound.conf || return 1
+
 if [ -e "$(basename ${FILE_MAP[web]})" ]; then
     nohup ./"$(basename ${FILE_MAP[web]})" run -c unbound.conf >/dev/null 2>&1 &
     sleep 2
     pgrep -x "$(basename ${FILE_MAP[web]})" > /dev/null && green "$(basename ${FILE_MAP[web]}) is running" || { red "$(basename ${FILE_MAP[web]}) is not running, restarting..."; pkill -x "$(basename ${FILE_MAP[web]})" && nohup ./"$(basename ${FILE_MAP[web]})" run -c unbound.conf >/dev/null 2>&1 & sleep 2; purple "$(basename ${FILE_MAP[web]}) restarted"; }
+    local started_core
+    started_core=$(secure_core_pids | head -n 1)
+    CONFIG_FILE=unbound.conf secure_share_lease "$started_core" || { kill "$started_core" 2>/dev/null || :; return 1; }
 fi
 
 
@@ -498,7 +519,6 @@ add_ssl_cert() {
 
 generate_sub_link () {
 echo ""
-rm -rf ${FILE_PATH}/.htaccess
 base64 -w0 ${FILE_PATH}/list.txt > ${FILE_PATH}/v2.log
 PHP_URL="https://00.ssss.nyc.mn/sub.php"
 QR_URL="https://00.ssss.nyc.mn/qrencode"  
@@ -506,8 +526,12 @@ $COMMAND "${FILE_PATH}/${SUB_TOKEN}.php" "$PHP_URL"
 $COMMAND "${WORKDIR}/qrencode" "$QR_URL" && chmod +x "${WORKDIR}/qrencode"
 V2rayN_LINK="https://api.${USERNAME}.${CURRENT_DOMAIN}/v2.log"
 AUTO_LINK="https://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
-curl -sS "https://sublink.eooce.com/clash?config=${V2rayN_LINK}" -o ${FILE_PATH}/clash.yaml
-curl -sS "https://sublink.eooce.com/singbox?config=${V2rayN_LINK}" -o ${FILE_PATH}/singbox.yaml
+secure_publish || return 1
+local generation
+generation=$(cat "$SECURE_STATE/current")
+cp "$SECURE_STATE/$generation/mihomo-all.yaml" "$FILE_PATH/clash.yaml"
+cp "$SECURE_STATE/$generation/singbox-all.json" "$FILE_PATH/singbox.yaml"
+cp "$SECURE_STATE/$generation/v2.log" "$FILE_PATH/v2.log"
 "${WORKDIR}/qrencode" -m 2 -t UTF8 "${AUTO_LINK}"
 purple "\n自适应节点订阅链接: ${AUTO_LINK}\n"
 green "二维码和节点订阅链接适用于 V2rayN/Nekoray/ShadowRocket/Clash/Mihomo/Sing-box/karing/Loon/sterisand 等\n\n"
@@ -526,26 +550,16 @@ RewriteRule ^$ /index.html [L]
 </FilesMatch>
 RewriteRule ^${SUB_TOKEN}$ ${SUB_TOKEN}.php [L]
 EOF
+secure_install_http || return 1
+secure_show_links
 }
 
 install_keepalive () {
     purple "正在安装保活服务中,请稍等......"
     
-    # Create a configuration file for the keep-alive script
-    (
-    cat << EOF
-export UUID="$UUID"
-export VLESS_PORT="$VLESS_PORT"
-export TUIC_PORT="$TUIC_PORT"
-export HY2_PORT="$HY2_PORT"
-export PROXYIP="$PROXYIP"
-export USERNAME="$USERNAME"
-export CURRENT_DOMAIN="$CURRENT_DOMAIN"
-export private_key="$private_key"
-EOF
-    ) | base64 -w 0 > "${WORKDIR}/keepalive.conf"
+    secure_write_keepalive || return 1
 
-    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/unbound_start.sh"
+    KEEPALIVE_SCRIPT_URL="https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/unbound/unbound_start.sh"
     KEEPALIVE_SCRIPT_PATH="${WORKDIR}/unbound_start.sh"
 
     # Download the keep-alive script
@@ -613,7 +627,8 @@ get_links(){
 ISP=$(curl -s --max-time 2 https://speed.cloudflare.com/meta | awk -F\" '{print $26}' | sed -e 's/ /_/g' || echo "0")
 get_name() { if [ "$HOSTNAME" = "s1.ct8.pl" ]; then SERVER="CT8"; else SERVER=$(echo "$HOSTNAME" | cut -d '.' -f 1); fi; echo "$SERVER"; }
 NAME="$ISP-$(get_name)"
-yellow "注意：v2ray或其他软件的跳过证书验证需设置为true,否则hy2或tuic节点可能不通\n"
+secure_capture_config "$WORKDIR/unbound.conf" || return 1
+yellow "以下普通分享链接兼容旧客户端，HY2/TUIC 不验证证书；带证书的节点通过原自适应订阅更新\n"
 cat > $FILE_PATH/list.txt <<EOF
 vless://$UUID@$available_ip:$VLESS_PORT?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$public_key&type=tcp&headerType=none#$NAME-reality
 
@@ -623,7 +638,7 @@ tuic://$UUID:admin@$available_ip:$TUIC_PORT?sni=www.bing.com&congestion_control=
 EOF
 cat $FILE_PATH/list.txt
 [[ "$PROXYIP" == "true" ]] && purple "\n你的ProxyIP为: $available_ip:$VLESS_PORT"
-generate_sub_link
+generate_sub_link || return 1
 install_keepalive
 rm -rf "$(basename ${FILE_MAP[web]})" unbound.conf sb.log core fake_useragent_0.2.0.json private.key cert.pem
 quick_command
@@ -635,7 +650,7 @@ quick_command() {
   SCRIPT_PATH="$HOME/bin/$COMMAND"
   mkdir -p "$HOME/bin"
   echo "#!/bin/bash" > "$SCRIPT_PATH"
-  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/main/unbound.sh)" >> "$SCRIPT_PATH"
+  echo "bash <(curl -Ls https://raw.githubusercontent.com/Git-think/Salksd/refs/heads/unbound/unbound.sh)" >> "$SCRIPT_PATH"
   chmod +x "$SCRIPT_PATH"
   if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
       echo "export PATH=\"\$HOME/bin:\$PATH\"" >> "$HOME/.bashrc" 2>/dev/null
@@ -646,8 +661,11 @@ green "快捷指令00创建成功,下次运行输入00快速进入菜单\n"
 
 
 get_nodes(){
+secure_init || return 1
+if [[ -s "$SECURE_STATE/current" ]]; then secure_show_links; else yellow "旧版安装请先选择 5 重启迁移，再使用 64 位自用订阅地址。"; fi
 cat ${FILE_PATH}/list.txt
-RE_SUB_TOKEN=$(sed -n 's/RewriteRule \^\([a-zA-Z0-9]\{1,\}\).*/\1/p' ${FILE_PATH}/.htaccess)
+secure_tokens || return 1
+RE_SUB_TOKEN=$SECURE_TOKEN
 echo ""
 "${WORKDIR}/qrencode" -m 2 -t UTF8 "https://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}"
 yellow "\n自适应节点订阅链接: https://api.${USERNAME}.${CURRENT_DOMAIN}/${RE_SUB_TOKEN}\n二维码和节点订阅链接适用于V2rayN/Nekoray/ShadowRocket/Clash/Sing-box/karing/Loon/sterisand 等\n"
@@ -667,17 +685,26 @@ menu() {
   echo  "==============="
   yellow "4. 初始化系统"
   echo  "==============="
+  green "5. 重启服务（自动检测并迁移旧版）"
+  echo  "==============="
   red "0. 退出脚本"
   echo "==========="
-  reading "请输入选择(0-4): " choice
+  reading "请输入选择(0-5): " choice
   echo ""
   case "${choice:-1}" in
       1) install_unbound ;;
       2) get_nodes ;;
       3) changge_ports ;;
       4) reset_system ;;
+      5) restart_unbound ;;
       0) exit 0 ;;
-      *) red "无效的选项，请输入 0 到 4" ;;
+      *) red "无效的选项，请输入 0 到 5" ;;
   esac
 }
-menu
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    case "${1:-}" in
+        --restart) restart_unbound ;;
+        --change-ports) secure_fetch_worker && bash "$WORKDIR/unbound_start.sh" --change-ports "${2:-all}" ;;
+        *) menu ;;
+    esac
+fi

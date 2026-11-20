@@ -1,0 +1,56 @@
+name: Test and publish obfuscated unbound scripts
+on:
+  push:
+    branches: [main]
+    paths:
+      - unbound.sh
+      - unbound_start.sh
+      - lib/**
+      - tools/**
+      - tests/**
+      - .github/workflows/encrypt-and-deploy.yml
+  workflow_dispatch:
+
+concurrency:
+  group: publish-unbound
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate sources and generate standalone scripts
+        run: |
+          set -euo pipefail
+          for script in unbound.sh unbound_start.sh lib/*.sh; do bash -n "$script"; done
+          python3 tests/baseline.py
+          bash tests/security.sh
+          bash tests/lifecycle.sh
+          bash tests/panel-worker.sh
+          bash tests/shares.sh
+          php -l lib/sub-router.php
+          python3 tests/panel.py
+          python3 tools/build_obfuscated.py
+          for script in dist/*.sh; do bash -n "$script"; done
+          python3 tests/obfuscation.py
+      - name: Publish exactly two artifacts without rewriting branch history
+        run: |
+          set -euo pipefail
+          git worktree add ../unbound-publish origin/unbound
+          cd ../unbound-publish
+          git ls-files -z | xargs -0 -r git rm -f --
+          cp "$GITHUB_WORKSPACE/dist/unbound.sh" ./unbound.sh
+          cp "$GITHUB_WORKSPACE/dist/unbound_start.sh" ./unbound_start.sh
+          chmod +x unbound.sh unbound_start.sh
+          git add unbound.sh unbound_start.sh
+          test "$(git ls-files | wc -l)" -eq 2
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "Publish obfuscated scripts from ${GITHUB_SHA}"
+          git push origin HEAD:unbound
