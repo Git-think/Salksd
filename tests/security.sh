@@ -58,9 +58,9 @@ secure_jq -e '.content["p08"]|fromjson|(.outbounds|length)==5 and
   ([.outbounds[]|select(.tls.insecure==true)]|length)==2 and
   all(.outbounds[]|select(.tls.insecure==true); .tag|endswith(" [SkipVerify]"))' "$FILE_PATH/.salksd-data/bundle.json" >/dev/null
 secure_jq -e '.content["p08"]|fromjson|[.outbounds[].tag]|sort==[
-  "PL-s16-HY2 [SkipVerify]","PL-s16-HY2 [Verify]","PL-s16-TUIC [SkipVerify]","PL-s16-TUIC [Verify]","PL-s16-VLESS"]' "$FILE_PATH/.salksd-data/bundle.json" >/dev/null
+  "PL-s16-HY2","PL-s16-HY2 [SkipVerify]","PL-s16-TUIC","PL-s16-TUIC [SkipVerify]","PL-s16-VLESS"]' "$FILE_PATH/.salksd-data/bundle.json" >/dev/null
 secure_jq -e '.content["p09"]|fromjson|[.proxies[].name]|sort==[
-  "PL-s16-HY2 [SkipVerify]","PL-s16-HY2 [Verify]","PL-s16-TUIC [SkipVerify]","PL-s16-TUIC [Verify]","PL-s16-VLESS"]' "$FILE_PATH/.salksd-data/bundle.json" >/dev/null
+  "PL-s16-HY2","PL-s16-HY2 [SkipVerify]","PL-s16-TUIC","PL-s16-TUIC [SkipVerify]","PL-s16-VLESS"]' "$FILE_PATH/.salksd-data/bundle.json" >/dev/null
 [[ "$(NODE_COUNTRY=DE secure_node_prefix)" == DE-s16 ]]
 if NODE_COUNTRY='bad space' secure_node_prefix; then exit 1; fi
 secure_jq -e '.content["p09"]|fromjson|(.proxies|length)==5 and

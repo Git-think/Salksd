@@ -246,10 +246,10 @@ secure_render_payload() {
           {type:"vless",tag:"VLESS",server:.listen,server_port:.listen_port,uuid:.users[0].uuid,flow:.users[0].flow,
            tls:{enabled:true,server_name:.tls.server_name,insecure:false,utls:{enabled:true,fingerprint:"chrome"},
                 reality:{enabled:true,public_key:$identity[0].public_key,short_id:(.tls.reality.short_id[0] // "")}}}
-        else empty end | .tag = ($prefix + "-" + .tag + (if .type=="vless" then "" else " [Verify]" end))]}' > "$stage/p01" || return 1
+        else empty end | .tag = ($prefix + "-" + .tag)]}' > "$stage/p01" || return 1
     # Explicit legacy compatibility feed requested by the operator. Never merge it into the secure feed.
     secure_jq '.outbounds |= map(if .type=="vless" then . else del(.tls.certificate) | .tls.insecure=true |
-        .tls.server_name="www.bing.com" | .tag |= sub(" \\[Verify\\]$"; " [SkipVerify]") end)' "$stage/p01" > "$stage/p02" || return 1
+        .tls.server_name="www.bing.com" | .tag += " [SkipVerify]" end)' "$stage/p01" > "$stage/p02" || return 1
     local variant=p01
     for variant in p01; do
         secure_jq -r '.outbounds[] |
@@ -310,7 +310,7 @@ secure_render_payload() {
     secure_jq --slurpfile legacy "$stage/p02" \
       '.outbounds += [$legacy[0].outbounds[] | select(.type!="vless")]' "$stage/p01" > "$stage/p08" || return 1
     secure_jq '.proxies += [.proxies[] | select(.type!="vless") | del(.fingerprint) |
-        .["skip-cert-verify"]=true | .sni="www.bing.com" | .name |= sub(" \\[Verify\\]$"; " [SkipVerify]")] |
+        .["skip-cert-verify"]=true | .sni="www.bing.com" | .name += " [SkipVerify]"] |
         .["proxy-groups"][0].proxies=[.proxies[].name]' "$stage/p05" > "$stage/p09" || return 1
     secure_jq -e '.outbounds|length==5' "$stage/p08" >/dev/null || return 1
     secure_jq -e '.proxies|length==5' "$stage/p09" >/dev/null || return 1

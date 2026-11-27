@@ -35,7 +35,7 @@
 
 内置预设使用 ACL4SSR 官方 `master/Clash/` 下的公开 `.list`：LocalAreaNetwork、UnBan、BanAD、BanProgramAD、GoogleCN、SteamCN、Telegram、ProxyMedia、ProxyLite、ChinaDomain、ChinaCompanyIp。生成局域网/国内直连、广告拒绝、媒体/消息选择和最终兜底规则。节点与模板在本机合并，不向模板站上传订阅 URL、节点口令或证书。客户端自行下载公开规则集。该预设是本项目基于公开规则集的模板，不声称逐字复制旧转换站的私有默认模板。
 
-内置 AUTO 排除 `[SkipVerify]` 节点；兼容节点仍可手动选择。节点名固定为 `PL-s16-VLESS`、`PL-s16-TUIC [Verify]`、`PL-s16-TUIC [SkipVerify]`、`PL-s16-HY2 [Verify]`、`PL-s16-HY2 [SkipVerify]`；国家可通过保存的 `NODE_COUNTRY` 调整。模板组名不影响节点协议与验证。
+内置 AUTO 排除 `[SkipVerify]` 节点；兼容节点仍可手动选择。节点名固定为 `PL-s16-VLESS`、`PL-s16-TUIC`、`PL-s16-TUIC [SkipVerify]`、`PL-s16-HY2`、`PL-s16-HY2 [SkipVerify]`；安全节点不加后缀，继续启用证书验证。国家可通过保存的 `NODE_COUNTRY` 调整。模板组名不影响节点协议与验证。
 
 管理面板可选择内置模板、粘贴 INI 或从 HTTPS 地址导入；保存前验证，后台重新生成订阅，操作不重启核心。URL 导入保存当时的模板快照，需要更新模板时再次导入；模板引用的规则集按 86400 秒更新。
 

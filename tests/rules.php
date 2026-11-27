@@ -2,12 +2,12 @@
 require __DIR__.'/../lib/php-runtime.php';
 function check(bool $value):void { if (!$value) { throw new RuntimeException('test failed'); } }
 $base=['mixed-port'=>7890,'dns'=>['enable'=>true,'nameserver'=>['1.1.1.1']],
-    'proxies'=>[['name'=>'PL-s16-TUIC [Verify]','type'=>'tuic','fingerprint'=>str_repeat('a',64),'skip-cert-verify'=>false],
+    'proxies'=>[['name'=>'PL-s16-TUIC','type'=>'tuic','fingerprint'=>str_repeat('a',64),'skip-cert-verify'=>false],
     ['name'=>'PL-s16-TUIC [SkipVerify]','type'=>'tuic','skip-cert-verify'=>true]]];
 $out=acl_compile(acl_default(),$base);
 check(count($out['rules'])===13 && count($out['rule-providers'])===11 && count($out['proxy-groups'])===5);
 check($out['proxies']===$base['proxies'] && $out['dns']===$base['dns']);
-check($out['proxy-groups'][1]['proxies']===['PL-s16-TUIC [Verify]']);
+check($out['proxy-groups'][1]['proxies']===['PL-s16-TUIC']);
 check($out['rules'][12]==='MATCH,Final');
 check(count(array_filter($out['rule-providers'],fn($p)=>$p['format']==='text' && $p['behavior']==='classical'))===11);
 $custom="[custom]\ncustom_proxy_group=Custom`select`.*\nruleset=DIRECT,[]IP-CIDR,10.0.0.0/8,no-resolve\nruleset=Custom,[]FINAL\n";
