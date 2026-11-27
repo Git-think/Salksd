@@ -189,7 +189,7 @@ if ($method === 'POST') {
         } elseif ($action === 'share-create') {
             $minutes = field($_POST, 'minutes');
             $label = trim(field($_POST, 'label'));
-            if (!ctype_digit($minutes) || (int)$minutes < 1 || (int)$minutes > 527040 ||
+            if (!preg_match('/^[0-9]+$/D', $minutes) || (int)$minutes < 1 || (int)$minutes > 527040 ||
                 !preg_match('/^.{0,80}$/usD', $label)) {
                 stop_request(400, '有效期须为 1–527040 分钟，名称不超过 80 个汉字。');
             }

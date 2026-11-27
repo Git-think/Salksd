@@ -51,7 +51,10 @@ require __DIR__ . '/secure-sub.php';
             sock.bind(('127.0.0.1', 0))
             port = sock.getsockname()[1]
         log = (root / 'php.log').open('wb')
-        process = subprocess.Popen([php, '-n', '-S', f'127.0.0.1:{port}', str(root / 'test-router.php')],
+        # Linux builds can load ctype as an optional extension; -n omits it.
+        # Disable it explicitly so Windows exercises the same minimal PHP setup.
+        process = subprocess.Popen([php, '-n', '-d', 'disable_functions=ctype_digit',
+                                    '-S', f'127.0.0.1:{port}', str(root / 'test-router.php')],
                                    cwd=root, stdout=log, stderr=log)
         cookies = {}
 
@@ -162,7 +165,10 @@ require __DIR__ . '/secure-sub.php';
                                  'current_password': password}, client='two')[0] == 303
             assert '更换全部端口' in page(main, client='new')[1]
             csrf, _, _ = page(main, client='new')
-            assert request(main, {'action':'share-create','csrf':csrf,'minutes':'0','label':'x'},client='new')[0]==400
+            for minutes in ('', '0', '-1', '+1', '1.5', '1e2', ' 2', '2\n', '２', '527041'):
+                status, text, _ = request(main, {'action':'share-create','csrf':csrf,'minutes':minutes,'label':'x'},client='new')
+                assert status == 400, ('invalid duration', repr(minutes), status, text)
+                assert not (data/'request.json').exists()
             assert request(main, {'action':'share-create','csrf':csrf,'minutes':'2','label':'test <>&'},client='new')[0]==303
             task=json.loads((data/'request.json').read_text())
             assert task['action']=='share-create' and task['duration']==120 and task['label']=='test <>&'
