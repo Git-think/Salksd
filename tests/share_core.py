@@ -1,3 +1,4 @@
+from storage_codec import read as stored_read, write as stored_write
 #!/usr/bin/env python3
 """Real local core authentication before/after shares.sh removes expired/revoked users.
 
@@ -41,12 +42,12 @@ def main():
     state = Path(args.fixture).resolve() / 'state'
     output = state / 'share-core-test'
     output.mkdir(exist_ok=True)
-    active = json.loads((state / 'share-active-server.json').read_text(encoding='utf-8'))
-    removed = json.loads((state / 'server.json').read_text(encoding='utf-8'))
-    bundle = json.loads((state / 'share-active-bundle.json').read_text(encoding='utf-8'))
-    accounts = {'owner': json.loads(bundle['content']['singbox-all.json'])}
+    active = json.loads(stored_read((state / 'share-active-server.json')))
+    removed = json.loads(stored_read((state / 'server.json')))
+    bundle = json.loads(stored_read((state / 'share-active-bundle.json')))
+    accounts = {'owner': json.loads(bundle['content']['p08'])}
     for number, share in enumerate(bundle['shares'].values(), 1):
-        accounts['share' + str(number)] = json.loads(share['content']['singbox-all.json'])
+        accounts['share' + str(number)] = json.loads(share['content']['p08'])
     assert len(accounts) == 3
     protocols = ['tuic', 'hysteria2', 'vless']
     ports = {p: free_port() for p in protocols}
@@ -55,6 +56,7 @@ def main():
     for name in ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']:
         env.pop(name, None)
     pem = (state / 'cert.pem').read_text()
+    (output/'runtime-key.pem').write_text(stored_read(state/'private.key'), newline='\n')
     clients = {}
     # Build once: after revocation no client config or saved credential is changed.
     for account, content in accounts.items():
@@ -81,7 +83,7 @@ def main():
             for inbound in source['inbounds']:
                 protocol = inbound['type']
                 tls = {'enabled': True, 'certificate_path': str(state / 'cert.pem'),
-                       'key_path': str(state / 'private.key')}
+                       'key_path': str(output / 'runtime-key.pem')}
                 if protocol != 'vless':
                     tls['alpn'] = ['h3']
                 node = {'type': protocol, 'listen': '127.0.0.1', 'listen_port': ports[protocol],

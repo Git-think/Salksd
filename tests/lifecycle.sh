@@ -32,7 +32,7 @@ procstat() {
 printf 'tcp 40001\nudp 40002\nudp 40003\n' > "$TEST_ROOT/ports"
 VLESS_PORT=40001; TUIC_PORT=40002; HY2_PORT=40003
 CONFIG_FILE="$WORKDIR/unbound.conf"
-jq -n '{inbounds:[{type:"vless",listen_port:40001},{type:"tuic",listen_port:40002},{type:"hysteria2",listen_port:40003}]}' > "$CONFIG_FILE"
+secure_jq -n '{inbounds:[{type:"vless",listen_port:40001},{type:"tuic",listen_port:40002},{type:"hysteria2",listen_port:40003}]}' > "$CONFIG_FILE"
 devil() {
     [[ "$1" == port ]] || return 1
     case "$2" in
@@ -49,7 +49,7 @@ shuf() {
 }
 secure_replace_ports
 [[ "$VLESS_PORT" == 41001 && "$TUIC_PORT" == 41002 && "$HY2_PORT" == 41003 ]]
-jq -e '[.inbounds[].listen_port]==[41001,41002,41003]' "$CONFIG_FILE" >/dev/null
+secure_jq -e '[.inbounds[].listen_port]==[41001,41002,41003]' "$CONFIG_FILE" >/dev/null
 secure_ports_rollback
 [[ "$(sort "$TEST_ROOT/ports")" == "$(printf 'tcp 40001\nudp 40002\nudp 40003\n' | sort)" ]]
 VLESS_PORT=40001; TUIC_PORT=40002; HY2_PORT=40003

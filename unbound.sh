@@ -170,7 +170,7 @@ install_unbound() {
 declare -A FILE_MAP
 secure_init && secure_backup || return 1
 if [[ -s "$WORKDIR/keepalive.conf" ]]; then
-    eval "$(base64 -d < "$WORKDIR/keepalive.conf")"
+    secure_load_keepalive "$WORKDIR/keepalive.conf" || return 1
     secure_restore_identity || return 1
 fi
 # Persist a usable existing pair before the baseline clears WORKDIR.
@@ -519,37 +519,20 @@ add_ssl_cert() {
 
 generate_sub_link () {
 echo ""
-base64 -w0 ${FILE_PATH}/list.txt > ${FILE_PATH}/v2.log
-PHP_URL="https://00.ssss.nyc.mn/sub.php"
+secure_seal "$FILE_PATH/list.txt" || return 1
 QR_URL="https://00.ssss.nyc.mn/qrencode"  
-$COMMAND "${FILE_PATH}/${SUB_TOKEN}.php" "$PHP_URL" 
 $COMMAND "${WORKDIR}/qrencode" "$QR_URL" && chmod +x "${WORKDIR}/qrencode"
-V2rayN_LINK="https://api.${USERNAME}.${CURRENT_DOMAIN}/v2.log"
+V2rayN_LINK="https://api.${USERNAME}.${CURRENT_DOMAIN}/p07"
 AUTO_LINK="https://api.${USERNAME}.${CURRENT_DOMAIN}/${SUB_TOKEN}"
 secure_publish || return 1
 local generation
 generation=$(cat "$SECURE_STATE/current")
-cp "$SECURE_STATE/$generation/mihomo-all.yaml" "$FILE_PATH/clash.yaml"
-cp "$SECURE_STATE/$generation/singbox-all.json" "$FILE_PATH/singbox.yaml"
-cp "$SECURE_STATE/$generation/v2.log" "$FILE_PATH/v2.log"
+cp "$SECURE_STATE/$generation/p09" "$FILE_PATH/p09"
+cp "$SECURE_STATE/$generation/p08" "$FILE_PATH/p08"
+cp "$SECURE_STATE/$generation/p07" "$FILE_PATH/p07"
 "${WORKDIR}/qrencode" -m 2 -t UTF8 "${AUTO_LINK}"
 purple "\n自适应节点订阅链接: ${AUTO_LINK}\n"
 green "二维码和节点订阅链接适用于 V2rayN/Nekoray/ShadowRocket/Clash/Mihomo/Sing-box/karing/Loon/sterisand 等\n\n"
-cat > ${FILE_PATH}/.htaccess << EOF
-RewriteEngine On
-DirectoryIndex index.html
-RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /(\?|$)
-RewriteRule ^$ /index.html [L]
-<FilesMatch "^(index\.html|${SUB_TOKEN}\.php)$">
-    Order Allow,Deny
-    Allow from all
-</FilesMatch>
-<FilesMatch "^(clash\.yaml|singbox\.yaml|list\.txt|v2\.log|sub\.php)$">
-    Order Allow,Deny
-    Deny from all
-</FilesMatch>
-RewriteRule ^${SUB_TOKEN}$ ${SUB_TOKEN}.php [L]
-EOF
 secure_install_http || return 1
 secure_show_links
 }
@@ -626,15 +609,15 @@ EOF
 get_links(){
 ISP=$(curl -s --max-time 2 https://speed.cloudflare.com/meta | awk -F\" '{print $26}' | sed -e 's/ /_/g' || echo "0")
 get_name() { if [ "$HOSTNAME" = "s1.ct8.pl" ]; then SERVER="CT8"; else SERVER=$(echo "$HOSTNAME" | cut -d '.' -f 1); fi; echo "$SERVER"; }
-NAME="$ISP-$(get_name)"
+NAME=$(secure_node_prefix) || return 1
 secure_capture_config "$WORKDIR/unbound.conf" || return 1
 yellow "以下普通分享链接兼容旧客户端，HY2/TUIC 不验证证书；带证书的节点通过原自适应订阅更新\n"
 cat > $FILE_PATH/list.txt <<EOF
-vless://$UUID@$available_ip:$VLESS_PORT?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$public_key&type=tcp&headerType=none#$NAME-reality
+vless://$UUID@$available_ip:$VLESS_PORT?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$public_key&type=tcp&headerType=none#$NAME-VLESS
 
-hysteria2://$UUID@$available_ip:$HY2_PORT/?sni=www.bing.com&alpn=h3&insecure=1#$NAME-hysteria2
+hysteria2://$UUID@$available_ip:$HY2_PORT/?sni=www.bing.com&alpn=h3&insecure=1#$NAME-HY2%20%5BSkipVerify%5D
 
-tuic://$UUID:admin@$available_ip:$TUIC_PORT?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#$NAME-tuic
+tuic://$UUID:admin@$available_ip:$TUIC_PORT?sni=www.bing.com&congestion_control=bbr&udp_relay_mode=native&alpn=h3&allow_insecure=1#$NAME-TUIC%20%5BSkipVerify%5D
 EOF
 cat $FILE_PATH/list.txt
 [[ "$PROXYIP" == "true" ]] && purple "\n你的ProxyIP为: $available_ip:$VLESS_PORT"
@@ -663,7 +646,7 @@ green "快捷指令00创建成功,下次运行输入00快速进入菜单\n"
 get_nodes(){
 secure_init || return 1
 if [[ -s "$SECURE_STATE/current" ]]; then secure_show_links; else yellow "旧版安装请先选择 5 重启迁移，再使用 64 位自用订阅地址。"; fi
-cat ${FILE_PATH}/list.txt
+secure_read "${FILE_PATH}/list.txt"
 secure_tokens || return 1
 RE_SUB_TOKEN=$SECURE_TOKEN
 echo ""

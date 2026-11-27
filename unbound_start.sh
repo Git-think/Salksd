@@ -28,7 +28,7 @@ load_config() {
     local conf_file="$WORKDIR_PATH/keepalive.conf"
     if [ -f "$conf_file" ]; then
         # Decode the entire file content and evaluate it to export variables
-        eval "$(base64 -d < "$conf_file")"
+        secure_load_keepalive "$conf_file" || return 1
         
         return 0
     else
@@ -304,6 +304,7 @@ if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
     return 0
 fi
 case "${1:-}" in
+    --decode-file) [[ -n "${2:-}" ]] && secure_read "$2"; exit $? ;;
     --share-watch) secure_init && secure_share_watch "${2:-}"; exit $? ;;
     --restart|--change-ports) secure_operation "$1" "${2:-all}"; exit $? ;;
 esac
@@ -334,7 +335,7 @@ while true; do
     secure_backup && secure_restore_identity && secure_prepare_certificate || { sleep 20; continue; }
     [[ -f "$UNBOUND_EXEC" ]] || download_unbound_binary || { sleep 20; continue; }
     if [[ -f "$SECURE_STATE/server.json" ]]; then
-        cp "$SECURE_STATE/server.json" "$CONFIG_FILE"
+        secure_read "$SECURE_STATE/server.json" > "$CONFIG_FILE"
     else
         generate_config_file || { sleep 20; continue; }
     fi

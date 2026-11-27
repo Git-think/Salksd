@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/php-runtime.php';
 
 // Embedded in both distributed scripts. This file contains no account secrets.
 ini_set('display_errors', '0');
@@ -15,7 +16,8 @@ function field(array $values, string $key): string {
     return isset($values[$key]) && is_string($values[$key]) ? $values[$key] : '';
 }
 function read_json(string $path): ?array {
-    $value = json_decode((string)@file_get_contents($path), true);
+    try { $value = json_decode(stored_decode((string)@file_get_contents($path)), true); }
+    catch (Throwable $e) { return null; }
     return is_array($value) ? $value : null;
 }
 function write_json(string $path, array $value): void {
@@ -23,6 +25,8 @@ function write_json(string $path, array $value): void {
     if ($temp === false) { throw new RuntimeException('storage'); }
     try {
         $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        if (in_array(basename($path), ['panel.json','bundle.json','request.json','running.json','rules-settings.json'], true) ||
+            basename(dirname($path)) === 'panel-backups') { $json = stored_encode($json); }
         if (file_put_contents($temp, $json) !== strlen($json) || !chmod($temp, 0600) || !rename($temp, $path)) {
             throw new RuntimeException('storage');
         }
@@ -44,9 +48,9 @@ function cover(): void {
 }
 function proxy_format(string $agent): ?string {
     // Identification controls presentation only; secrets and revocation enforce access.
-    if (preg_match('/nekobox|nekoray|sing-box|\bSFM\b|\bSFI\b|\bSFA\b|karing/i', $agent)) { return 'singbox-all.json'; }
-    if (preg_match('/clash|mihomo/i', $agent)) { return 'mihomo-all.yaml'; }
-    if (preg_match('/v2rayn|v2rayng|shadowrocket|hiddify|streisand|loon/i', $agent)) { return 'v2.log'; }
+    if (preg_match('/nekobox|nekoray|sing-box|\bSFM\b|\bSFI\b|\bSFA\b|karing|hiddify/i', $agent)) { return 'p08'; }
+    if (preg_match('/clash|mihomo/i', $agent)) { return 'p09'; }
+    if (preg_match('/v2rayn|v2rayng|shadowrocket|streisand|loon|happ|v2box/i', $agent)) { return 'p07'; }
     return null;
 }
 function h(string $value): string {
@@ -76,7 +80,7 @@ function redirect_panel(string $path, string $message): void {
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $path = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
-if (!preg_match('~^/(?:manage/)?([a-f0-9]{64}|[A-Za-z0-9_-]{8})$~D', $path, $match)) { cover(); }
+if (!preg_match('~^/(?:manage/)?([a-f0-9]{64}|[A-Za-z0-9_-]{8})(?:/([cbsn]))?$~D', $path, $match)) { cover(); }
 if (!in_array(strtolower((string)($_SERVER['HTTPS'] ?? '')), ['on', '1'], true)) { cover(); }
 $directory = __DIR__ . '/.salksd-data';
 $bundle = read_json($directory . '/bundle.json');
@@ -86,6 +90,12 @@ $format = str_starts_with($path, '/manage/') ? 'manage' : 'auto';
 $strong = strlen($token) === 64 && hash_equals($bundle['token_hash'] ?? '', hash('sha256', $token));
 $agent = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
 $clientFormat = proxy_format($agent);
+$formats = ['c'=>'p09', 'b'=>'p07', 's'=>'p08', 'n'=>'p08'];
+$suffix = $match[2] ?? '';
+$requested = field($_GET, 'f');
+if (($requested !== '' && !isset($formats[$requested])) || ($suffix !== '' && $requested !== '' && $suffix !== $requested) ||
+    ($format === 'manage' && ($suffix !== '' || $requested !== '' || field($_GET, 'a') !== ''))) { cover(); }
+$forced = $formats[$suffix !== '' ? $suffix : $requested] ?? null;
 $content = $bundle['content'] ?? [];
 if (!$strong) {
     $share = $bundle['shares'][hash('sha256', $token)] ?? null;
@@ -98,12 +108,50 @@ if (!in_array($method, ['GET', 'HEAD', 'POST'], true)) { cover(); }
 $browser = stripos((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'text/html') !== false &&
     stripos($agent, 'Mozilla') !== false &&
     !preg_match('/v2ray|nekobox|nekoray|mihomo|clash|sing-box|shadowrocket|karing|loon|streisand/i', $agent);
-$panel = $strong && ($format === 'manage' || $method === 'POST' || ($browser && field($_GET, 'raw') !== '1'));
+$panel = $strong && ($format === 'manage' || $method === 'POST' || ($browser && $forced === null && field($_GET, 'raw') !== '1'));
 if (!$panel) {
-    $name = $clientFormat ?? 'v2.log';
+    $name = $forced ?? $clientFormat ?? 'p07';
     if (!isset($content[$name])) { cover(); }
-    header('Content-Type: ' . (str_ends_with($name, '.json') ? 'application/json' : 'text/plain') . '; charset=utf-8');
-    if ($method !== 'HEAD') { echo $content[$name]; }
+    $response = $content[$name];
+    if ($name === 'p07' && preg_match('/v2rayng|shadowrocket|streisand|loon|happ|v2box/i', $agent)) {
+        // These readers must not receive v2rayN's PEM-only internal DTO links.
+        // Keep the explicitly labelled legacy nodes; never relabel them as verified.
+        $lines=explode("\n", (string)base64_decode($response, true));
+        $ng=stripos($agent,'v2rayng')!==false;
+        $lines=array_values(array_filter($lines,static fn($line)=>preg_match($ng ? '~^(vless|hysteria2)://~' : '~^(vless|tuic|hysteria2)://~',$line)===1));
+        $response=base64_encode(implode("\n",$lines)."\n");
+        header('X-Subscription-Compatibility: legacy-uris');
+    }
+    if (field($_GET, 'a') !== '') {
+        if ($name !== 'p09') { stop_request(400, '临时规则模板仅适用于 c 格式。'); }
+        try {
+            $address=field($_GET,'a');
+            if (!preg_match('/^[A-Za-z0-9_-]{1,2732}$/D',$address)) { throw new RuntimeException('a 参数须为模板 HTTPS 地址的 Base64URL 编码。'); }
+            $url=base64_decode(strtr($address,'-_','+/'),true);
+            if ($url===false) { throw new RuntimeException('模板地址编码无效。'); } acl_url($url);
+            $cacheDirectory=$directory.'/templates';
+            if (!is_dir($cacheDirectory) && !mkdir($cacheDirectory,0700)) { throw new RuntimeException('模板缓存不可用。'); }
+            $cache=$cacheDirectory.'/'.hash('sha256',$url);
+            foreach (glob($cacheDirectory.'/*') ?: [] as $oldCache) {
+                if (!is_link($oldCache) && is_file($oldCache) && preg_match('/^[a-f0-9]{64}$/D',basename($oldCache)) && filemtime($oldCache)<time()-3600) { unlink($oldCache); }
+            }
+            if (!is_file($cache) && count(glob($cacheDirectory.'/*') ?: [])>=32) { throw new RuntimeException('临时模板缓存已满，请稍后重试。'); }
+            if (is_file($cache) && filemtime($cache)>time()-3600) {
+                $ini=stored_decode(file_get_contents($cache));
+            } else {
+                $ini=acl_fetch($url);
+                // Validate before caching; this response cannot override saved defaults.
+                acl_compile($ini,json_decode($response,true,512,JSON_THROW_ON_ERROR));
+                $temp=tempnam($cacheDirectory,'.cache-');
+                if ($temp===false) { throw new RuntimeException('模板缓存不可用。'); }
+                try { $bytes=stored_encode($ini); if (file_put_contents($temp,$bytes)!==strlen($bytes) || !rename($temp,$cache)) { throw new RuntimeException('模板缓存不可用。'); } }
+                finally { if (is_file($temp)) { unlink($temp); } }
+            }
+            $response=json_encode(acl_compile($ini,json_decode($response,true,512,JSON_THROW_ON_ERROR)),JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);
+        } catch (Throwable $e) { stop_request(422,'临时模板无法应用；默认模板未改变。'.$e->getMessage()); }
+    }
+    header('Content-Type: ' . ($name === 'p08' ? 'application/json' : 'text/plain') . '; charset=utf-8');
+    if ($method !== 'HEAD') { echo $response; }
     exit;
 }
 if ($method === 'HEAD') { header('Content-Type: text/html; charset=utf-8'); exit; }
@@ -115,6 +163,7 @@ ini_set('session.use_only_cookies', '1');
 ini_set('session.gc_maxlifetime', '1800');
 session_name('SALKSDPANEL');
 session_save_path($directory . '/sessions');
+session_set_save_handler(new StoredSessions(), true);
 session_set_cookie_params(['lifetime'=>0, 'path'=>'/', 'secure'=>true, 'httponly'=>true, 'samesite'=>'Strict']);
 if (!session_start()) { stop_request(503); }
 if (!is_string($_SESSION['csrf'] ?? null)) { $_SESSION['csrf'] = bin2hex(random_bytes(32)); }
@@ -123,7 +172,7 @@ $access = authorised($config, $strong);
 $panelPath = $format === 'manage' ? '/manage/' . $token : '/' . rawurlencode($token);
 
 if ($method === 'POST') {
-    if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 8192) { stop_request(413); }
+    if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 1048576) { stop_request(413); }
     if (!hash_equals($_SESSION['csrf'], field($_POST, 'csrf'))) { stop_request(403, '页面已过期，请刷新后重试。'); }
     if (strtolower((string)($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '')) === 'cross-site') { stop_request(403); }
     // Serialize settings changes and logins. Never send passwords to a shell.
@@ -180,9 +229,17 @@ if ($method === 'POST') {
             $_SESSION['auth_until'] = time() + 1800;
             redirect_panel($panelPath, $mode === 'set' ? '管理密码已设置，其他登录已失效。' : '已取消额外密码；请保管好私密管理链接。');
         }
-        if (!in_array($action, ['change-ports','share-create','share-revoke','share-delete','share-prune'], true)) { stop_request(400); }
+        if (!in_array($action, ['change-ports','share-create','share-revoke','share-delete','share-prune','backup-refresh','backup-prune','rules-save'], true)) { stop_request(400); }
         $task = ['id'=>bin2hex(random_bytes(16)), 'action'=>$action, 'created_at'=>time()];
-        if ($action === 'change-ports') {
+        if ($action === 'rules-save') {
+            $mode=field($_POST,'rules-mode');
+            if (!in_array($mode,['default','paste','url'],true)) { stop_request(400); }
+            try {
+                $ini=$mode==='default' ? acl_default() : ($mode==='url' ? acl_fetch(field($_POST,'rules-url')) : field($_POST,'rules-ini'));
+                acl_compile($ini,json_decode($bundle['content']['p09'],true,512,JSON_THROW_ON_ERROR));
+            } catch (Throwable $e) { throw new PanelError($e->getMessage(),422); }
+            $task['rules']=['mode'=>$mode==='default'?'default':'custom','ini'=>$ini];
+        } elseif ($action === 'change-ports') {
             $protocol = field($_POST, 'protocol');
             if (!in_array($protocol, ['all', 'vless', 'tuic', 'hysteria2'], true)) { stop_request(400); }
             $task['protocol'] = $protocol;
@@ -195,6 +252,15 @@ if ($method === 'POST') {
             }
             $task['duration'] = (int)$minutes * 60;
             $task['label'] = $label;
+        } elseif ($action === 'backup-prune') {
+            $keep = field($_POST, 'keep');
+            $revision = field($_POST, 'revision');
+            if (!preg_match('/^[0-9]+$/D', $keep) || (int)$keep < 1 || (int)$keep > 1000 ||
+                !preg_match('/^[0-9a-f]{64}$/D', $revision)) {
+                stop_request(400, '保留数量须为 1–1000，请先刷新备份清单。');
+            }
+            $task['keep'] = (int)$keep;
+            $task['revision'] = $revision;
         } elseif ($action === 'share-revoke' || $action === 'share-delete') {
             $id = field($_POST, 'share_id');
             if (!preg_match('/^[0-9a-f]{32}$/D', $id)) { stop_request(400); }
@@ -244,6 +310,9 @@ $message = $messages[$state] ?? '状态未知，请检查服务。';
 if ($state === 'success' && in_array($result['action'] ?? '', ['share-delete','share-prune'], true)) {
     $message = '已清理失效分享记录。';
 }
+if ($state === 'success' && ($result['action'] ?? '') === 'backup-prune') { $message = '旧备份清理完成。'; }
+if ($state === 'success' && ($result['action'] ?? '') === 'backup-refresh') { $message = '备份清单已更新。'; }
+if ($state === 'success' && ($result['action'] ?? '') === 'rules-save') { $message = '规则模板已保存，请更新 c 格式订阅。'; }
 if (in_array($state, ['queued', 'running'], true) && time() - (int)($result['updated_at'] ?? 0) > 600) {
     $message = '等待超时，无法确认操作结果。请检查保活状态；系统不会自动重复执行。';
 }
@@ -251,7 +320,8 @@ $ports = array_intersect_key($bundle['ports'] ?? [], array_flip(['vless', 'tuic'
 if (field($_GET, 'view') === 'status') {
     if (!$access) { stop_request(401); }
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['status'=>$state, 'message'=>$message, 'ports'=>$ports,'shares'=>$bundle['share_index'] ?? []], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['status'=>$state, 'message'=>$message, 'ports'=>$ports,'shares'=>$bundle['share_index'] ?? [],
+        'backups'=>read_json($directory . '/backups.json')], JSON_UNESCAPED_UNICODE);
     exit;
 }
 $notice = (string)($_SESSION['notice'] ?? '');
@@ -270,10 +340,11 @@ header('Content-Type: text/html; charset=utf-8');
 main{max-width:680px;margin:44px auto;padding:0 20px 40px}h1{font-size:28px;margin-bottom:6px}h2{font-size:20px}
 section{background:#1f2937;border:1px solid #374151;border-radius:12px;padding:22px;margin:20px 0}
 p{margin:10px 0}.muted{color:#b7c2d2}label{display:block;margin:14px 0 6px}input,select,button{font:inherit;border-radius:7px;box-sizing:border-box}
-input,select{width:100%;padding:9px;background:#111827;color:#fff;border:1px solid #596579}
+input,select,textarea{width:100%;padding:9px;background:#111827;color:#fff;border:1px solid #596579}textarea{min-height:180px;box-sizing:border-box;resize:vertical}
 button{padding:10px 18px;margin-top:16px;border:0;background:#93c5fd;color:#102239;cursor:pointer}button:disabled{opacity:.5;cursor:wait}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid #374151}
 .notice{padding:12px;border-left:3px solid #93c5fd;background:#1f2937}small{display:block;margin-top:9px;color:#b7c2d2}
+.backup-list{max-height:280px;overflow:auto} .backup-list td{font-size:14px}
 </style>
 </head>
 <body><main><h1>节点管理</h1><p class="muted">更换端口后，订阅地址保持不变。</p>
@@ -312,9 +383,67 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;bord
 <button id="prune-shares">清理全部已失效记录</button></form>
 <small>最多保留 128 条记录，删除已过期或已撤销记录可释放名额；旧分享地址保持失效。</small>
 <div id="shares"></div><small>分享地址只响应支持的代理客户端；其他访问和过期地址显示公开宣传页。已分享过的自用账号不会因此撤销。</small></section>
+<section><h2>订阅格式与分流</h2>
+<p>原地址自动识别客户端；添加单字母路径可固定格式。下面的地址属于自用账号，请勿分享。</p>
+<?php foreach (['c'=>'Clash / Mihomo','b'=>'Base64 / v2rayN','s'=>'sing-box JSON','n'=>'NekoBox JSON'] as $letter=>$label): ?>
+<label><?= h($label) ?></label><input readonly value="<?= h('/'.$token.'/'.$letter) ?>">
+<?php endforeach ?>
+<p>内置 ACL4SSR 官方公开规则集，可在本机合并自定义 INI。规则修改不重启核心，不改变节点证书验证。自定义模板仅影响 c 格式。</p>
+<form method="post"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="action" value="rules-save">
+<label for="rules-mode">默认模板</label><select id="rules-mode" name="rules-mode"><option value="default">内置 ACL4SSR 预设</option><option value="url">从 HTTPS 地址导入 INI</option><option value="paste">粘贴自定义 INI</option></select>
+<label for="rules-url">模板 HTTPS 地址</label><input id="rules-url" name="rules-url" type="url" maxlength="2048" placeholder="https://…/template.ini">
+<label for="rules-link">使用该模板的临时订阅地址</label><input id="rules-link" readonly placeholder="填写上方地址后自动生成">
+<label for="rules-ini">自定义 INI 内容</label><textarea id="rules-ini" name="rules-ini" maxlength="262144" spellcheck="false"></textarea>
+<button class="rules-action" <?= in_array($state, ['queued','running'], true) ? 'disabled' : '' ?>>保存默认模板</button></form>
+<small>也可在订阅 URL 添加 ?f=c&amp;a=模板 HTTPS 地址的 Base64URL 编码，仅替换本次响应的模板，不改变以上默认设置。下载失败会报错并保留现有订阅。支持 ruleset、custom_proxy_group 及基本生成开关；不执行脚本或导入任意文件。</small>
+</section>
+<section><h2>备份清理</h2><p>仅管理本服务的自动操作备份。默认保留全部历史，清理后删除的备份无法恢复。</p>
+<form method="post"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="action" value="backup-refresh">
+<button class="backup-action" <?= in_array($state, ['queued','running'], true) ? 'disabled' : '' ?>>刷新备份清单</button></form>
+<p id="backup-summary" class="muted"></p>
+<form method="post" id="backup-prune-form"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="action" value="backup-prune">
+<input type="hidden" id="backup-revision" name="revision">
+<label for="backup-keep">保留最近几份自动备份</label><input id="backup-keep" name="keep" type="number" min="1" max="1000" value="3" required>
+<small>至少保留一份；最近完整恢复点和当前恢复指针额外保护。手动迁移备份、首页备份及密码设置备份由你另行管理。</small>
+<div class="backup-list"><table><thead><tr><th>时间（服务器）</th><th>占用</th><th>处理</th></tr></thead><tbody id="backup-rows"></tbody></table></div>
+<p id="backup-plan" role="status"></p><button id="backup-prune" disabled>确认清理旧备份</button></form>
+<small>清理仅删除预览中列出的旧备份，不重启服务。备份清单变化时会拒绝操作，刷新后重新确认。</small></section>
 <script nonce="<?= h($nonce) ?>">
 const statusURL = new URL(location.href); statusURL.searchParams.set('view', 'status');
 const csrf = <?= json_encode($csrf) ?>;
+document.getElementById('rules-url').addEventListener('input', event => {
+  const output=document.getElementById('rules-link'); output.value='';
+  try {
+    const value=event.target.value.trim(), url=new URL(value);
+    if(url.protocol!=='https:' || url.username || url.password) return;
+    const encoded=btoa(String.fromCharCode(...new TextEncoder().encode(value))).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+    output.value=location.origin+<?= json_encode('/'.$token.'/c?a=') ?>+encoded;
+  } catch (_) {}
+});
+let backupCatalog=null, backupBusy=false;
+function sizeText(kib) { return kib<1024 ? kib+' KiB' : (kib/1024).toFixed(1)+' MiB'; }
+function renderBackups(catalog, busy) {
+  backupCatalog=catalog;backupBusy=busy;
+  const rows=document.getElementById('backup-rows');rows.replaceChildren();
+  const summary=document.getElementById('backup-summary'), plan=document.getElementById('backup-plan'), button=document.getElementById('backup-prune');
+  const keep=Number(document.getElementById('backup-keep').value);
+  document.getElementById('backup-revision').value=catalog?.revision || '';
+  if (!catalog || !Array.isArray(catalog.items)) {summary.textContent='请先刷新备份清单。';plan.textContent='';button.disabled=true;return;}
+  const valid=Number.isInteger(keep) && keep>=1 && keep<=1000;
+  let count=0,kib=0;
+  summary.textContent=catalog.items.length+' 份自动备份，共占用 '+sizeText(catalog.total_kib)+ '。';
+  catalog.items.forEach((item,index)=>{
+    const remove=valid && catalog.can_prune && index>=keep && !item.protected;
+    if(remove){count++;kib+=item.kib;}
+    const id=item.id, time=id.slice(0,4)+'-'+id.slice(4,6)+'-'+id.slice(6,8)+' '+id.slice(9,11)+':'+id.slice(11,13)+':'+id.slice(13,15);
+    const row=document.createElement('tr');
+    for(const value of [time,sizeText(item.kib),remove?'将删除':item.reason || '保留']){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}
+    rows.append(row);
+  });
+  plan.textContent=!catalog.can_prune ? '未找到完整恢复点，暂不能清理。' : !valid ? '请输入 1–1000 的保留数量。' : '将删除 '+count+' 份旧备份，预计释放 '+sizeText(kib)+'。';
+  button.textContent='确认清理 '+count+' 份旧备份';button.disabled=busy || !valid || !catalog.can_prune || count===0;
+}
+document.getElementById('backup-keep').addEventListener('input',()=>renderBackups(backupCatalog,backupBusy));
 function renderShares(shares, busy) {
   const box = document.getElementById('shares'); box.replaceChildren();
   const inactive=shares.filter(s=>s.revoked_at || s.expires_at*1000<=Date.now()).length;
@@ -347,14 +476,16 @@ async function refreshStatus() {
     for (const protocol of ['vless','tuic','hysteria2']) {
       document.getElementById('port-' + protocol).textContent = data.ports[protocol] ?? '—';
     }
-    for (const button of document.querySelectorAll('.port-action, .share-action')) {
+    for (const button of document.querySelectorAll('.port-action, .share-action, .backup-action, .rules-action')) {
       button.disabled = ['queued','running'].includes(data.status);
     }
     renderShares(data.shares, ['queued','running'].includes(data.status));
+    renderBackups(data.backups, ['queued','running'].includes(data.status));
   } catch (_) { document.getElementById('status').textContent = '暂时无法获取状态，请刷新页面查看。'; }
 }
 setInterval(refreshStatus, 3000);
 renderShares(<?= json_encode($bundle['share_index'] ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= in_array($state, ['queued','running'], true) ? 'true' : 'false' ?>);
+renderBackups(<?= json_encode(read_json($directory . '/backups.json'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= in_array($state, ['queued','running'], true) ? 'true' : 'false' ?>);
 </script>
 <?php endif ?>
 </main></body></html>

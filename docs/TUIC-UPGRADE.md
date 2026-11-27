@@ -1,5 +1,7 @@
 # unbound 安全订阅升级
 
+2026-11-28 追加的持久化编码、备份清理、单字母路径和 ACL4SSR 本地转换见 [STORAGE-AND-RULES.md](STORAGE-AND-RULES.md)。该文覆盖下文旧版关于明文状态、直接 tar 恢复和原订阅文件名的说明。执行状态以测试记录为准。
+
 源码基线：`19229fbc64ec744a8f24d9d9b3ad2adef6f6f375`。本次只升级 `unbound.sh` 和配套 `unbound_start.sh`；该提交没有 VPS `sing-box.sh`，`sb.sh`、`frps.sh`、`frps_start.sh` 保持原样。
 
 ## 两套证书的用途

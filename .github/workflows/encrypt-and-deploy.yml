@@ -33,7 +33,12 @@ jobs:
           bash tests/lifecycle.sh
           bash tests/panel-worker.sh
           bash tests/shares.sh
+          bash tests/backups.sh
+          bash tests/storage.sh
           php -l lib/sub-router.php
+          php -l lib/php-runtime.php
+          php -l lib/storage-codec.php
+          php -n tests/rules.php
           python3 tests/panel.py
           python3 tools/build_obfuscated.py
           for script in dist/*.sh; do bash -n "$script"; done

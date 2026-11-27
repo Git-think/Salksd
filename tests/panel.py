@@ -1,3 +1,4 @@
+from storage_codec import read as stored_read, write as stored_write
 """Exercise the real PHP router over local HTTP, without SSH or a real port change.
 
 The loopback-only test router marks requests as HTTPS, as the production HTTPS
@@ -27,6 +28,7 @@ def run(php):
         data = root / '.salksd-data'
         (data / 'sessions').mkdir(parents=True)
         shutil.copyfile(ROOT / 'lib/sub-router.php', root / 'secure-sub.php')
+        shutil.copyfile(ROOT / 'lib/php-runtime.php', root / 'php-runtime.php')
         shutil.copyfile(ROOT / 'lib/public-index.html', root / 'index.html')
         cover = (root/'index.html').read_text(encoding='utf-8')
         token = 'a' * 64
@@ -34,8 +36,8 @@ def run(php):
         payload = {'outbounds': [{'type': 'tuic', 'tls': {'insecure': False}}]}
         bundle = {'token_hash': hashlib.sha256(token.encode()).hexdigest(),
                   'ports': {'vless': 41001, 'tuic': 41002, 'hysteria2': 41003},
-                  'content': {'singbox-all.json': json.dumps(payload), 'mihomo-all.yaml': '{"proxies":[]}',
-                              'v2.log': base64.b64encode(b'vless://fixture\ntuic://legacy\nhysteria2://legacy\nv2rayn://tuic/fixture\nv2rayn://hysteria2/fixture\n').decode()}}
+                  'content': {'p08': json.dumps(payload), 'p09': '{"proxies":[]}',
+                              'p07': base64.b64encode(b'vless://fixture\ntuic://legacy\nhysteria2://legacy\nv2rayn://tuic/fixture\nv2rayn://hysteria2/fixture\n').decode()}}
         share_token='abCD123_'
         share_id='c'*32
         bundle['shares']={hashlib.sha256(share_token.encode()).hexdigest():{'expires_at':int(time.time())+3600,'content':bundle['content']}}
@@ -73,6 +75,7 @@ require __DIR__ . '/secure-sub.php';
                 headers['Content-Type'] = 'application/x-www-form-urlencoded'
             connection = http.client.HTTPConnection('127.0.0.1', port, timeout=15)
             path = ('/manage/' if query.get('format')=='manage' else '/')+query.get('token','')
+            if query.get('path_format'): path += '/' + query['path_format']
             if query.get('format')=='bad': path='/unknown/path'
             connection.request(method or ('POST' if post is not None else 'GET'), path+'?' + urllib.parse.urlencode(query), body, headers)
             response = connection.getresponse()
@@ -115,6 +118,7 @@ require __DIR__ . '/secure-sub.php';
             assert request(share,{'action':'share-create'},browser=False)[:2] == (200, cover)
             assert request(share,{'action':'share-delete','share_id':share_id},browser=False)[:2] == (200, cover)
             assert request(share,{'action':'share-prune'},browser=False)[:2] == (200, cover)
+            assert request(share,{'action':'backup-prune','keep':'1'},browser=False)[:2] == (200, cover)
             status, text, _ = request(feed, browser=False)
             assert status == 200 and json.loads(text) == payload
             status, text, _ = request(feed, extra={'User-Agent': 'Mozilla/5.0 NekoBox/1.4.2'})
@@ -123,9 +127,42 @@ require __DIR__ . '/secure-sub.php';
             assert len(base64.b64decode(request(share, browser=False, extra={'User-Agent':'v2rayN/7.25.6'})[1]).splitlines()) == 5
             assert json.loads(request(share, browser=False, extra={'User-Agent':'NekoBox/Android/1.4.2 (Prefer ClashMeta Format)'})[1]) == payload
             assert json.loads(request(share, browser=False, extra={'User-Agent':'FlClash/0.9.4'})[1]) == {'proxies': []}
+            for kind, name in {'c':'p09','b':'p07','s':'p08','n':'p08'}.items():
+                for selection in [{'path_format':kind},{'f':kind}]:
+                    assert request(dict(feed, **selection))[1] == bundle['content'][name]
+                    assert request(dict(share, **selection))[1] == cover
+                    assert request(dict(share, **selection),browser=False)[1] == bundle['content'][name]
+            assert request(dict(feed,path_format='1'))[:2] == (200,cover)
+            assert request(dict(feed,path_format='clash'))[:2] == (200,cover)
+            assert request(dict(feed,path_format='c',f='b'))[:2] == (200,cover)
+            for agent in ['Nekoray/4.0','sing-box/1.12','SFA/1.12','SFI/1.12','SFM/1.12','Karing/1','Hiddify/2']:
+                assert request(feed,browser=False,extra={'User-Agent':agent})[1] == bundle['content']['p08']
+            for agent in ['ClashMetaForAndroid/2','ClashVerge/2','Mihomo/1.19','FlClash/0.9']:
+                assert request(feed,browser=False,extra={'User-Agent':agent})[1] == bundle['content']['p09']
+            for agent in ['v2rayN/7','v2rayNG/1','Shadowrocket/2','Streisand/1','Loon/3','Happ/1','V2Box/1']:
+                text=request(feed,browser=False,extra={'User-Agent':agent})[1]
+                if agent.startswith('v2rayN/'):
+                    assert text == bundle['content']['p07']
+                else:
+                    links=base64.b64decode(text).decode().splitlines()
+                    assert len(links)==(2 if agent.startswith('v2rayNG/') else 3)
+                    assert not any(link.startswith('v2rayn://') for link in links)
+            custom='[custom]\ncustom_proxy_group=Custom`select`[]DIRECT\nruleset=DIRECT,[]GEOIP,CN\nruleset=Custom,[]FINAL\n'
+            url='https://example.com/template.ini'
+            encoded_url=lambda value: base64.urlsafe_b64encode(value.encode()).decode().rstrip('=')
+            (data/'templates').mkdir()
+            stored_write(data/'templates'/hashlib.sha256(url.encode()).hexdigest(),custom)
+            overridden=request(dict(feed,f='c',a=encoded_url(url)))
+            assert overridden[0]==200 and json.loads(overridden[1])['rules']==['GEOIP,CN,DIRECT','MATCH,Custom']
+            assert request(dict(feed,f='c'))[1]==bundle['content']['p09']
+            assert request(dict(feed,f='b',a=url))[0]==400
+            assert request(dict(feed,f='c',a=encoded_url('file:///etc/passwd')))[0]==422
+            assert request(dict(feed,f='c',a=encoded_url('https://127.0.0.1/private')))[0]==422
             csrf, text, headers = page(feed)
             assert '更换全部端口' in text and '更换 TUIC 端口' in text and 'Content-Security-Policy' in headers
             assert '清理全部已失效记录' in text and '删除记录' in text
+            assert '备份清理' in text and '保留最近几份自动备份' in text
+            assert '订阅格式与分流' in text and '保存默认模板' in text
             assert 'Secure' in headers['Set-Cookie'] or 'secure' in headers['Set-Cookie']
             assert 'HttpOnly' in headers['Set-Cookie'] and 'SameSite=Strict' in headers['Set-Cookie']
             assert not (data / 'request.json').exists()
@@ -136,7 +173,7 @@ require __DIR__ . '/secure-sub.php';
             password = 'test<&"password'
             assert request(main, {'action': 'password', 'csrf': csrf, 'mode': 'set',
                                  'new_password': password, 'confirm_password': password})[0] == 303
-            settings = json.loads((data / 'panel.json').read_text())
+            settings = json.loads(stored_read((data / 'panel.json')))
             assert settings['password_hash'].startswith('$') and password not in (data / 'panel.json').read_text()
             assert list((data / 'panel-backups').glob('*.json'))
             assert '登录管理面板' in page(main, client='two')[1]
@@ -151,7 +188,7 @@ require __DIR__ . '/secure-sub.php';
             two_csrf, _, _ = page(main, client='two')
             assert request(main, {'action': 'change-ports', 'protocol':'shell', 'csrf': two_csrf}, client='two')[0] == 400
             assert request(main, {'action': 'change-ports', 'protocol':'tuic', 'csrf': two_csrf}, client='two')[0] == 303
-            queued = json.loads((data / 'request.json').read_text())
+            queued = json.loads(stored_read((data / 'request.json')))
             assert set(queued) == {'action', 'id', 'created_at', 'protocol'} and queued['action'] == 'change-ports' and queued['protocol'] == 'tuic'
             assert request(main, {'action': 'change-ports', 'csrf': two_csrf}, client='two')[0] == 403
             two_csrf, _, _ = page(main, client='two')
@@ -173,13 +210,13 @@ require __DIR__ . '/secure-sub.php';
                 assert status == 400, ('invalid duration', repr(minutes), status, text)
                 assert not (data/'request.json').exists()
             assert request(main, {'action':'share-create','csrf':csrf,'minutes':'2','label':'test <>&'},client='new')[0]==303
-            task=json.loads((data/'request.json').read_text())
+            task=json.loads(stored_read((data/'request.json')))
             assert task['action']=='share-create' and task['duration']==120 and task['label']=='test <>&'
             assert not any(key in task for key in ('password','uuid','token'))
             (data/'request.json').unlink()
             csrf, _, _ = page(main,client='new')
             assert request(main,{'action':'share-revoke','csrf':csrf,'share_id':share_id},client='new')[0]==303
-            assert json.loads((data/'request.json').read_text())['share_id']==share_id
+            assert json.loads(stored_read((data/'request.json')))['share_id']==share_id
             (data/'request.json').unlink()
             csrf, _, _ = page(main,client='new')
             assert request(main,{'action':'share-delete','csrf':csrf,'share_id':share_id},client='new')[0]==409
@@ -189,17 +226,42 @@ require __DIR__ . '/secure-sub.php';
             (data/'bundle.json').write_text(json.dumps(bundle))
             assert request(share,browser=False)[:2]==(200,cover)
             assert request(main,{'action':'share-delete','csrf':csrf,'share_id':share_id},client='new')[0]==303
-            queued=json.loads((data/'request.json').read_text())
+            queued=json.loads(stored_read((data/'request.json')))
             assert queued['action']=='share-delete' and queued['share_id']==share_id
             assert set(queued)=={'id','action','created_at','share_id'}
             (data/'request.json').unlink()
             csrf, _, _ = page(main,client='new')
             assert request(main,{'action':'share-prune','csrf':csrf},client='new')[0]==303
-            queued=json.loads((data/'request.json').read_text())
+            queued=json.loads(stored_read((data/'request.json')))
             assert queued['action']=='share-prune' and set(queued)=={'id','action','created_at'}
             (data/'request.json').unlink()
             (data/'result.json').write_text(json.dumps({'status':'success','action':'share-prune','updated_at':time.time()}))
             assert '已清理失效分享记录。' in page(main,client='new')[1]
+            csrf, _, _ = page(main,client='new')
+            for keep in ('0','-1','1001','3.5','３','1\n'):
+                assert request(main,{'action':'backup-prune','csrf':csrf,'keep':keep,'revision':'d'*64},client='new')[0]==400
+            assert request(main,{'action':'backup-prune','csrf':csrf,'keep':'3','revision':'bad'},client='new')[0]==400
+            assert request(main,{'action':'backup-refresh','csrf':csrf},client='new')[0]==303
+            queued=json.loads(stored_read((data/'request.json')))
+            assert queued['action']=='backup-refresh' and set(queued)=={'id','action','created_at'}
+            (data/'request.json').unlink()
+            csrf, _, _ = page(main,client='new')
+            assert request(main,{'action':'backup-prune','csrf':csrf,'keep':'3','revision':'d'*64},client='new')[0]==303
+            queued=json.loads(stored_read((data/'request.json')))
+            assert queued['keep']==3 and queued['revision']=='d'*64 and set(queued)=={'id','action','created_at','keep','revision'}
+            (data/'request.json').unlink()
+            (data/'backups.json').write_text(json.dumps({'items':[],'revision':'d'*64,'can_prune':False,'total_kib':0}))
+            assert json.loads(request(dict(main,view='status'),client='new')[1])['backups']['revision']=='d'*64
+            csrf,_,_=page(main,client='new')
+            assert request(main,{'action':'rules-save','csrf':csrf,'rules-mode':'paste','rules-ini':custom},client='new')[0]==303
+            queued=json.loads(stored_read(data/'request.json'))
+            assert queued['action']=='rules-save' and queued['rules']=={'mode':'custom','ini':custom}
+            assert b'custom_proxy_group' not in (data/'request.json').read_bytes()
+            (data/'request.json').unlink()
+            csrf,_,_=page(main,client='new')
+            assert request(main,{'action':'rules-save','csrf':csrf,'rules-mode':'paste','rules-ini':'[custom]\nwrong=true'},client='new')[0]==422
+            assert not (data/'request.json').exists()
+            assert all(b'SALKSD-STORE-1:' in p.read_bytes() for p in (data/'sessions').iterdir() if p.is_file())
             (data / 'panel.json').write_text('{broken')
             assert request(main)[0] == 503
             assert request(feed, browser=False)[0] == 200

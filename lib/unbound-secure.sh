@@ -2,9 +2,18 @@
 # Shared source; tools/build_obfuscated.py embeds it in both distributed scripts.
 # Never source this file from a subscription or from public_html.
 SALKSD_SECURITY_VERSION=1
+# SALKSD STORAGE BEGIN
+source "$(dirname "${BASH_SOURCE[0]}")/unbound-storage.sh" || return 1
+# SALKSD STORAGE END
+# SALKSD RULES BEGIN
+source "$(dirname "${BASH_SOURCE[0]}")/unbound-rules.sh" || return 1
+# SALKSD RULES END
 # SALKSD SHARES BEGIN
 source "$(dirname "${BASH_SOURCE[0]}")/unbound-shares.sh" || return 1
 # SALKSD SHARES END
+# SALKSD BACKUPS BEGIN
+source "$(dirname "${BASH_SOURCE[0]}")/unbound-backups.sh" || return 1
+# SALKSD BACKUPS END
 
 secure_init() {
     WORKDIR=${WORKDIR:-${WORKDIR_PATH:-}}
@@ -20,17 +29,24 @@ secure_backup() {
     SECURE_BACKUP="$SECURE_STATE/backups/$(date +%Y%m%d-%H%M%S)-$$-$(openssl rand -hex 3)"
     (umask 077; mkdir "$SECURE_BACKUP") || return 1
     local item
-    for item in cert.pem private.key server.json identity.json token legacy-token shares.json share-retired.json current published-fingerprint; do
-        [[ ! -f "$SECURE_STATE/$item" ]] || cp -p "$SECURE_STATE/$item" "$SECURE_BACKUP/$item" || return 1
+    for item in cert.pem private.key server.json identity.json token legacy-token shares.json share-retired.json rules-settings.json current published-fingerprint; do
+        [[ -f "$SECURE_STATE/$item" ]] || continue
+        case "$item" in
+            private.key|server.json|token|legacy-token|shares.json|rules-settings.json) secure_store "$SECURE_STATE/$item" "$SECURE_BACKUP/$item" || return 1 ;;
+            *) cp -p "$SECURE_STATE/$item" "$SECURE_BACKUP/$item" || return 1 ;;
+        esac
     done
     # Keep the complete affected website and worker files, including the old script.
     local paths=()
     [[ ! -d "$WORKDIR" ]] || paths+=(logs)
     [[ ! -d "$FILE_PATH" ]] || paths+=(public_html)
     if (( ${#paths[@]} )); then
-        tar -czf "$SECURE_BACKUP/site.tgz" -C "$(dirname "$WORKDIR")" "${paths[@]}" || return 1
+        (set -o pipefail; tar -czf - -C "$(dirname "$WORKDIR")" "${paths[@]}" | secure_store_stream "$SECURE_BACKUP/site.tgz") || return 1
     fi
     devil port list > "$SECURE_BACKUP/ports.txt" 2>/dev/null || :
+    for item in private.key server.json token legacy-token shares.json rules-settings.json; do
+        [[ ! -f "$SECURE_BACKUP/$item" ]] || secure_seal "$SECURE_BACKUP/$item" || return 1
+    done
     chmod 600 "$SECURE_BACKUP"/*
     printf '%s\n' "$SECURE_BACKUP" > "$SECURE_STATE/last-backup"
 }
@@ -43,7 +59,7 @@ secure_cert_valid() {
     openssl x509 -in "$cert" -noout -ext subjectAltName 2>/dev/null | grep -q 'DNS:' || return 1
     openssl verify -CAfile "$cert" -purpose sslserver -verify_hostname "$name" "$cert" >/dev/null 2>&1 || return 1
     a=$(openssl x509 -in "$cert" -pubkey -noout 2>/dev/null | openssl pkey -pubin -outform DER 2>/dev/null | openssl dgst -sha256)
-    b=$(openssl pkey -in "$key" -pubout -outform DER 2>/dev/null | openssl dgst -sha256)
+    b=$(set -o pipefail; secure_read "$key" | openssl pkey -pubout -outform DER 2>/dev/null | openssl dgst -sha256) || return 1
     [[ -n "$a" && "$a" == "$b" ]]
 }
 
@@ -78,9 +94,10 @@ secure_prepare_certificate() {
         echo '持久化证书失效或不匹配；已停止。请备份后显式迁移证书。' >&2
         return 1
     elif secure_cert_valid "$WORKDIR/cert.pem" "$WORKDIR/private.key" "$TLS_SERVER_NAME"; then
-        (umask 077; cp "$WORKDIR/cert.pem" "$cert"; cp "$WORKDIR/private.key" "$key") || return 1
-    else
+        (umask 077; cp "$WORKDIR/cert.pem" "$cert"; secure_store "$WORKDIR/private.key" "$key") || return 1
+    else (
         stage=$(mktemp -d "$SECURE_STATE/.certificate.XXXXXX") || return 1
+        trap "rm -f -- $(printf '%q' "$stage")/*; rmdir $(printf '%q' "$stage") 2>/dev/null || :" EXIT
         # A legacy CN-only pair remains in the transaction backup. Reuse its key when possible.
         if [[ -s "$WORKDIR/private.key" ]] && openssl pkey -in "$WORKDIR/private.key" -noout >/dev/null 2>&1; then
             cp "$WORKDIR/private.key" "$stage/private.key" || return 1
@@ -103,14 +120,16 @@ EOF
         openssl req -new -x509 -sha256 -days 3650 -key "$stage/private.key" -out "$stage/cert.pem" -config "$stage/openssl.cnf" || return 1
         secure_cert_valid "$stage/cert.pem" "$stage/private.key" "$TLS_SERVER_NAME" || return 1
         chmod 600 "$stage/private.key" "$stage/cert.pem"
-        mv "$stage/private.key" "$key" && mv "$stage/cert.pem" "$cert" || return 1
+        secure_store "$stage/private.key" "$key" && rm -f "$stage/private.key" && mv "$stage/cert.pem" "$cert" || return 1
         rm -f "$stage/openssl.cnf"
         rmdir "$stage"
         echo '已建立持久化 TLS 身份；旧版客户端请更新专用订阅。' >&2
+    ) || return 1
     fi
+    secure_seal "$key" || return 1
     chmod 600 "$cert" "$key"
     # Temporary copies keep the original launch paths and cleanup behaviour intact.
-    cp "$cert" "$WORKDIR/cert.pem" && cp "$key" "$WORKDIR/private.key" || return 1
+    cp "$cert" "$WORKDIR/cert.pem" && secure_read "$key" > "$WORKDIR/private.key" || return 1
     chmod 600 "$WORKDIR/cert.pem" "$WORKDIR/private.key"
 }
 
@@ -128,7 +147,8 @@ secure_tokens() {
     if [[ ! -s "$SECURE_STATE/token" ]]; then
         (umask 077; openssl rand -hex 32 > "$SECURE_STATE/token") || return 1
     fi
-    SECURE_TOKEN=$(cat "$SECURE_STATE/token")
+    secure_seal "$SECURE_STATE/token" || return 1
+    SECURE_TOKEN=$(secure_read "$SECURE_STATE/token") || return 1
     [[ "$SECURE_TOKEN" =~ ^[0-9a-f]{64}$ ]] || return 1
     local previous
     previous=$(secure_legacy_token) || return 1
@@ -137,20 +157,29 @@ secure_tokens() {
         # already subscribed to, including when migrating an inconsistent state file.
         if [[ ! -s "$SECURE_STATE/legacy-token" ]]; then
             (umask 077; printf '%s\n' "$previous" > "$SECURE_STATE/legacy-token.new") || return 1
-            mv "$SECURE_STATE/legacy-token.new" "$SECURE_STATE/legacy-token" || return 1
+            secure_store "$SECURE_STATE/legacy-token.new" "$SECURE_STATE/legacy-token" && rm -f "$SECURE_STATE/legacy-token.new" || return 1
         fi
     fi
     SUB_TOKEN=$SECURE_TOKEN
 }
 
+secure_node_prefix() {
+    local country="${NODE_COUNTRY:-PL}" host="${HOSTNAME:-$(hostname)}"
+    host=${host%%.*}
+    [[ "$country" =~ ^[A-Z]{2}$ && "$host" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]] || return 1
+    printf '%s-%s' "$country" "$host"
+}
+
 secure_capture_config() {
     secure_init || return 1
-    jq -e '.inbounds | any(.type == "tuic")' "$1" >/dev/null || return 1
+    secure_jq -e '.inbounds | any(.type == "tuic")' "$1" >/dev/null || return 1
     # Keep the validated server configuration outside the disposable runtime directory.
     (umask 077; cp "$1" "$SECURE_STATE/server.json.new") || return 1
-    mv "$SECURE_STATE/server.json.new" "$SECURE_STATE/server.json" || return 1
+    secure_store "$SECURE_STATE/server.json.new" "$SECURE_STATE/server.json" && rm -f "$SECURE_STATE/server.json.new" || return 1
     if [[ -n "${public_key:-}" ]]; then
-        (umask 077; jq -n --arg public_key "$public_key" --arg name "${NAME:-$HOSTNAME}" '{public_key:$public_key,name:$name}' > "$SECURE_STATE/identity.json") || return 1
+        local node_name
+        node_name=$(secure_node_prefix) || return 1
+        (umask 077; secure_jq -n --arg public_key "$public_key" --arg name "$node_name" '{public_key:$public_key,name:$name}' > "$SECURE_STATE/identity.json") || return 1
     fi
     secure_tokens
 }
@@ -159,28 +188,28 @@ secure_write_keepalive() {
     # %q preserves special characters; base64 is storage encoding, not encryption.
     local var
     (umask 077
-      for var in UUID VLESS_PORT TUIC_PORT HY2_PORT PROXYIP USERNAME CURRENT_DOMAIN private_key public_key SUB_TOKEN available_ip TLS_SERVER_NAME; do
+      for var in UUID VLESS_PORT TUIC_PORT HY2_PORT PROXYIP USERNAME CURRENT_DOMAIN private_key public_key SUB_TOKEN available_ip TLS_SERVER_NAME NODE_COUNTRY; do
           printf 'export %s=%q\n' "$var" "${!var-}"
       done | base64 | tr -d '\n' > "$WORKDIR/keepalive.conf.new"
     ) || return 1
-    mv "$WORKDIR/keepalive.conf.new" "$WORKDIR/keepalive.conf"
+    secure_store "$WORKDIR/keepalive.conf.new" "$WORKDIR/keepalive.conf" && rm -f "$WORKDIR/keepalive.conf.new"
 }
 
 secure_restore_identity() {
     secure_init || return 1
     if [[ -s "$SECURE_STATE/server.json" ]]; then
-        available_ip=$(jq -r '.inbounds[] | select(.type=="tuic") | .listen' "$SECURE_STATE/server.json")
-        UUID=$(jq -r '.inbounds[] | select(.type=="tuic") | .users[0].uuid' "$SECURE_STATE/server.json")
-        TUIC_PORT=$(jq -r '.inbounds[] | select(.type=="tuic") | .listen_port' "$SECURE_STATE/server.json")
-        HY2_PORT=$(jq -r '.inbounds[] | select(.type=="hysteria2") | .listen_port' "$SECURE_STATE/server.json")
-        VLESS_PORT=$(jq -r '.inbounds[] | select(.type=="vless") | .listen_port' "$SECURE_STATE/server.json")
+        available_ip=$(secure_jq -r '.inbounds[] | select(.type=="tuic") | .listen' "$SECURE_STATE/server.json")
+        UUID=$(secure_jq -r '.inbounds[] | select(.type=="tuic") | .users[0].uuid' "$SECURE_STATE/server.json")
+        TUIC_PORT=$(secure_jq -r '.inbounds[] | select(.type=="tuic") | .listen_port' "$SECURE_STATE/server.json")
+        HY2_PORT=$(secure_jq -r '.inbounds[] | select(.type=="hysteria2") | .listen_port' "$SECURE_STATE/server.json")
+        VLESS_PORT=$(secure_jq -r '.inbounds[] | select(.type=="vless") | .listen_port' "$SECURE_STATE/server.json")
     elif [[ -s "$FILE_PATH/list.txt" ]]; then
         # The baseline deletes its config; recover the advertised IP and Reality public key.
-        available_ip=$(sed -n 's|^vless://[^@]*@\([^:]*\):.*|\1|p' "$FILE_PATH/list.txt" | head -1)
-        public_key=$(sed -n 's/.*[?&]pbk=\([^& #]*\).*/\1/p' "$FILE_PATH/list.txt" | head -1)
+        available_ip=$(secure_read "$FILE_PATH/list.txt" | sed -n 's|^vless://[^@]*@\([^:]*\):.*|\1|p' | head -1)
+        public_key=$(secure_read "$FILE_PATH/list.txt" | sed -n 's/.*[?&]pbk=\([^& #]*\).*/\1/p' | head -1)
     fi
     if [[ -s "$SECURE_STATE/identity.json" ]]; then
-        public_key=$(jq -r '.public_key' "$SECURE_STATE/identity.json")
+        public_key=$(secure_jq -r '.public_key' "$SECURE_STATE/identity.json")
     fi
     secure_tokens
 }
@@ -198,12 +227,13 @@ secure_validate_state() {
 
 secure_render_payload() {
     secure_tls_server_name || return 1
-    local stage=$1 source=$2 name="$TLS_SERVER_NAME" fingerprint
+    local stage=$1 source=$2 name="$TLS_SERVER_NAME" fingerprint prefix
+    prefix=$(secure_node_prefix) || return 1
     secure_cert_valid "$SECURE_STATE/cert.pem" "$SECURE_STATE/private.key" "$name" || return 1
     fingerprint=$(openssl x509 -in "$SECURE_STATE/cert.pem" -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f')
     [[ "$fingerprint" =~ ^[0-9a-f]{64}$ ]] || return 1
-    jq -n --slurpfile config "$source" --slurpfile identity "$SECURE_STATE/identity.json" \
-      --rawfile cert "$SECURE_STATE/cert.pem" --arg sni "$name" '
+    secure_jq -n --slurpfile config "$source" --slurpfile identity "$SECURE_STATE/identity.json" \
+      --rawfile cert "$SECURE_STATE/cert.pem" --arg sni "$name" --arg prefix "$prefix" '
       {outbounds: [$config[0].inbounds[] | . as $i |
         if .type == "tuic" then
           {type:"tuic",tag:"TUIC",server:.listen,server_port:.listen_port,uuid:.users[0].uuid,password:.users[0].password,
@@ -216,13 +246,13 @@ secure_render_payload() {
           {type:"vless",tag:"VLESS",server:.listen,server_port:.listen_port,uuid:.users[0].uuid,flow:.users[0].flow,
            tls:{enabled:true,server_name:.tls.server_name,insecure:false,utls:{enabled:true,fingerprint:"chrome"},
                 reality:{enabled:true,public_key:$identity[0].public_key,short_id:(.tls.reality.short_id[0] // "")}}}
-        else empty end | .tag = ($identity[0].name + "-" + .tag)]}' > "$stage/nekobox.json" || return 1
+        else empty end | .tag = ($prefix + "-" + .tag + (if .type=="vless" then "" else " [Verify]" end))]}' > "$stage/p01" || return 1
     # Explicit legacy compatibility feed requested by the operator. Never merge it into the secure feed.
-    jq '.outbounds |= map(if .type=="vless" then . else del(.tls.certificate) | .tls.insecure=true |
-        .tls.server_name="www.bing.com" | .tag += " (不验证证书)" end)' "$stage/nekobox.json" > "$stage/nekobox-nocert.json" || return 1
-    local variant=nekobox
-    for variant in nekobox; do
-        jq -r '.outbounds[] |
+    secure_jq '.outbounds |= map(if .type=="vless" then . else del(.tls.certificate) | .tls.insecure=true |
+        .tls.server_name="www.bing.com" | .tag |= sub(" \\[Verify\\]$"; " [SkipVerify]") end)' "$stage/p01" > "$stage/p02" || return 1
+    local variant=p01
+    for variant in p01; do
+        secure_jq -r '.outbounds[] |
           {ConfigVersion:4,ConfigType:(if .type=="tuic" then 8 elif .type=="hysteria2" then 7 else 5 end),CoreType:24,
            Remarks:.tag,Address:.server,Port:.server_port,StreamSecurity:(if .type=="vless" then "reality" else "tls" end),
            AllowInsecure:(.tls.insecure|tostring),Sni:.tls.server_name,Alpn:((.tls.alpn // [])|join(",")),
@@ -232,11 +262,11 @@ secure_render_payload() {
            ProtoExtraObj:{CongestionControl:(.congestion_control // null),Flow:(.flow // null)}} |
           "v2rayn://" + (if .ConfigType==8 then "tuic" elif .ConfigType==7 then "hysteria2" else "vless" end) + "/" +
           (tojson | @base64 | gsub("\\+";"-") | gsub("/";"_") | gsub("=";""))' \
-          "$stage/$variant.json" > "$stage/${variant/nekobox/v2rayn}.txt" || return 1
+          "$stage/$variant" > "$stage/p03" || return 1
     done
     # Older GUI releases do not understand v2rayn://. Give the opt-in compatibility
     # feed standard share URIs supported by both apps, with explicit skip flags.
-    jq -r '.outbounds[] | . as $o |
+    secure_jq -r '.outbounds[] | . as $o |
       (.server | if contains(":") then "["+.+"]" else . end) as $host |
       (.tag|@uri) as $tag |
       if .type=="tuic" then
@@ -250,9 +280,9 @@ secure_render_payload() {
         "vless://"+(.uuid|@uri)+"@"+$host+":"+(.server_port|tostring)+
         "?encryption=none&flow="+(.flow|@uri)+"&security=reality&sni="+(.tls.server_name|@uri)+
         "&fp=chrome&pbk="+(.tls.reality.public_key|@uri)+"&type=tcp&headerType=none#"+$tag
-      end' "$stage/nekobox-nocert.json" > "$stage/legacy.txt" || return 1
-    # JSON is also valid YAML; building through jq avoids YAML interpolation bugs.
-    jq --arg fp "$fingerprint" '
+      end' "$stage/p02" > "$stage/p04" || return 1
+    # JSON is also valid YAML; building through secure_jq avoids YAML interpolation bugs.
+    secure_jq --arg fp "$fingerprint" '
       {"mixed-port":7890,mode:"rule",proxies:[.outbounds[] |
         if .type=="tuic" then
           {name:.tag,type:.type,server:.server,port:.server_port,uuid:.uuid,password:.password,sni:.tls.server_name,
@@ -266,32 +296,35 @@ secure_render_payload() {
            servername:.tls.server_name,"skip-cert-verify":false,"client-fingerprint":"chrome",
            "reality-opts":{"public-key":.tls.reality.public_key,"short-id":.tls.reality.short_id}}
         end],"proxy-groups":[{name:"PROXY",type:"select",proxies:[.outbounds[].tag]}],rules:["MATCH,PROXY"]}' \
-      "$stage/nekobox.json" > "$stage/mihomo.yaml" || return 1
+      "$stage/p01" > "$stage/p05" || return 1
     local f
-    for f in "$stage"/*.json "$stage"/*.yaml; do jq -e . "$f" >/dev/null || return 1; done
+    for f in p01 p02 p05; do secure_jq -e . "$stage/$f" >/dev/null || return 1; done
     # Fail closed if any server private material or verification bypass slips into output.
     if grep -Eq 'PRIVATE KEY|"private_key"|"key_path"' "$stage"/*; then return 1; fi
-    if grep -Eq '"insecure" *: *true|"skip-cert-verify" *: *true' "$stage/nekobox.json" "$stage/mihomo.yaml"; then return 1; fi
+    if grep -Eq '"insecure" *: *true|"skip-cert-verify" *: *true' "$stage/p01" "$stage/p05"; then return 1; fi
     # One subscription contains VLESS + secure/legacy TUIC + secure/legacy HY2.
     # Standard links keep old clients usable; v2rayN also imports the native PEM nodes.
-    cat "$stage/legacy.txt" > "$stage/v2rayn-all.txt" || return 1
-    grep -E '^v2rayn://(tuic|hysteria2)/' "$stage/v2rayn.txt" >> "$stage/v2rayn-all.txt" || return 1
-    base64 < "$stage/v2rayn-all.txt" | tr -d '\n' > "$stage/v2.log"
-    jq --slurpfile legacy "$stage/nekobox-nocert.json" \
-      '.outbounds += [$legacy[0].outbounds[] | select(.type!="vless")]' "$stage/nekobox.json" > "$stage/singbox-all.json" || return 1
-    jq '.proxies += [.proxies[] | select(.type!="vless") | del(.fingerprint) |
-        .["skip-cert-verify"]=true | .sni="www.bing.com" | .name += " (不验证证书)"] |
-        .["proxy-groups"][0].proxies=[.proxies[].name]' "$stage/mihomo.yaml" > "$stage/mihomo-all.yaml" || return 1
-    jq -e '.outbounds|length==5' "$stage/singbox-all.json" >/dev/null || return 1
-    jq -e '.proxies|length==5' "$stage/mihomo-all.yaml" >/dev/null || return 1
+    cat "$stage/p04" > "$stage/p06" || return 1
+    grep -E '^v2rayn://(tuic|hysteria2)/' "$stage/p03" >> "$stage/p06" || return 1
+    base64 < "$stage/p06" | tr -d '\n' > "$stage/p07"
+    secure_jq --slurpfile legacy "$stage/p02" \
+      '.outbounds += [$legacy[0].outbounds[] | select(.type!="vless")]' "$stage/p01" > "$stage/p08" || return 1
+    secure_jq '.proxies += [.proxies[] | select(.type!="vless") | del(.fingerprint) |
+        .["skip-cert-verify"]=true | .sni="www.bing.com" | .name |= sub(" \\[Verify\\]$"; " [SkipVerify]")] |
+        .["proxy-groups"][0].proxies=[.proxies[].name]' "$stage/p05" > "$stage/p09" || return 1
+    secure_jq -e '.outbounds|length==5' "$stage/p08" >/dev/null || return 1
+    secure_jq -e '.proxies|length==5' "$stage/p09" >/dev/null || return 1
+    secure_rules_apply "$stage/p09" "$stage/p09" || return 1
     chmod 600 "$stage"/*
 }
 
-secure_publish() {
+secure_publish() (
+    set -o pipefail
     # No certificate creation; each share is rendered from its own protocol users.
     secure_init && secure_tokens && secure_shares_init || return 1
     local stage source="${SALKSD_PUBLISH_CONFIG:-$SECURE_STATE/server.json}" fingerprint
     stage=$(mktemp -d "$SECURE_STATE/.subscriptions.XXXXXX") || return 1
+    trap "if [[ -d $(printf '%q' "$stage") ]]; then rm -f -- $(printf '%q' "$stage")/*; rmdir $(printf '%q' "$stage"); fi" EXIT
     secure_render_payload "$stage" "$source" || return 1
     secure_share_payloads "$stage" "$source" || return 1
     fingerprint=$(openssl x509 -in "$SECURE_STATE/cert.pem" -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f')
@@ -301,15 +334,19 @@ secure_publish() {
         return 0
     fi
     local generation="subscriptions-$(date +%s)-$$-$RANDOM"
+    local stored
+    for stored in "$stage"/*; do secure_seal "$stored" || return 1; done
     mv "$stage" "$SECURE_STATE/$generation" || return 1
     # Save a relative generation name; a single rename publishes all formats atomically.
     printf '%s\n' "$generation" > "$SECURE_STATE/current.new"
     mv "$SECURE_STATE/current.new" "$SECURE_STATE/current" || return 1
     secure_install_http || return 1
     printf '%s\n' "$fingerprint" > "$SECURE_STATE/published-fingerprint"
-}
+)
 
 secure_install_http() {
+    local -
+    set -o pipefail
     mkdir -p "$FILE_PATH" || return 1
     secure_install_landing || return 1
     # Serv00 PHP is restricted to public_html by open_basedir; the front-end also
@@ -321,24 +358,26 @@ secure_install_http() {
     [[ "$generation" =~ ^subscriptions-[0-9]+-[0-9]+-[0-9]+$ ]] || return 1
     token_hash=$(printf '%s' "$SECURE_TOKEN" | openssl dgst -sha256 -r | awk '{print $1}')
     bundle=$(mktemp "$SECURE_STATE/.http.XXXXXX") || return 1
-    (
-        for file in v2.log singbox-all.json mihomo-all.yaml; do
-            jq -cn --arg key "$file" --rawfile value "$SECURE_STATE/$generation/$file" '{key:$key,value:$value}' || exit 1
-        done
-    ) | jq -sc --arg hash "$token_hash" --slurpfile shares "$SECURE_STATE/$generation/shares.json" \
+    secure_jq -nc --rawfile b "$SECURE_STATE/$generation/p07" --rawfile s "$SECURE_STATE/$generation/p08" \
+      --rawfile c "$SECURE_STATE/$generation/p09" --arg hash "$token_hash" --slurpfile shares "$SECURE_STATE/$generation/shares.json" \
       --slurpfile index "$SECURE_STATE/$generation/share-index.json" --slurpfile server "$SECURE_STATE/server.json" \
-      '{token_hash:$hash,shares:$shares[0],share_index:$index[0],ports:($server[0].inbounds|map({key:.type,value:.listen_port})|from_entries),content:from_entries}' > "$bundle" || return 1
+      '{token_hash:$hash,shares:$shares[0],share_index:$index[0],ports:($server[0].inbounds|map({key:.type,value:.listen_port})|from_entries),content:{p07:$b,p08:$s,p09:$c}}' | secure_store_stream "$bundle" || return 1
     local handler="$SECURE_STATE/secure-sub.php.new" data_dir="$FILE_PATH/.salksd-data"
+    {
+      secure_php_runtime_source | sed '1d'
+      {
     # SALKSD HTTP BEGIN
-    cat "$(dirname "${BASH_SOURCE[0]}")/sub-router.php" > "$handler" || return 1
+    cat "$(dirname "${BASH_SOURCE[0]}")/sub-router.php"
     # SALKSD HTTP END
+      } | sed -e '1d' -e '/^declare(strict_types=1);/d' -e '/^require_once __DIR__/d'
+    } | secure_php_wrapper > "$handler" || return 1
     if command -v php >/dev/null; then php -l "$handler" >/dev/null || return 1; fi
     (umask 077; mkdir -p "$data_dir") || return 1
     chmod 700 "$data_dir" || return 1
     printf 'Require all denied\n' > "$data_dir/.htaccess" || return 1
     chmod 644 "$data_dir/.htaccess" || return 1
     chmod 600 "$bundle" || return 1
-    mv "$bundle" "$data_dir/bundle.json" || return 1
+    secure_store "$bundle" "$data_dir/bundle.json" && rm -f "$bundle" || return 1
     # This router contains no UUID, password, token, certificate or server private key.
     chmod 644 "$handler"
     # The private and site directories are on the same home filesystem: atomic rename
@@ -352,13 +391,13 @@ RewriteEngine On
 RewriteRule ^\.well-known/acme-challenge/ - [L]
 RewriteRule ^(?:index\.html|secure-sub\.php)$ - [L]
 RewriteRule ^manage/([0-9a-f]{64})/?$ secure-sub.php?token=$1&format=manage [L,QSA]
-RewriteRule ^([0-9a-f]{64}|[A-Za-z0-9_-]{8})$ secure-sub.php?token=$1&format=auto [L,QSA]
+RewriteRule ^([0-9a-f]{64}|[A-Za-z0-9_-]{8})(/[cbsn])?$ secure-sub.php [L,QSA]
 RewriteRule ^.*$ secure-sub.php?format=cover [L]
 APACHE
     # Keep the original subscription URL and its authoritative rewrite below.
     # Its client format is now generated locally with the requested five nodes.
     cat >> "$FILE_PATH/.htaccess.new" <<'APACHE'
-<FilesMatch "^(list\.txt|v2\.log|clash\.yaml|singbox\.yaml|cert\.pem|private\.key)$">
+<FilesMatch "^(list\.txt|p0[789]|cert\.pem|private\.key)$">
     Require all denied
 </FilesMatch>
 # SALKSD SECURE END
@@ -372,12 +411,19 @@ APACHE
     printf 'ErrorDocument 403 https://%s/\nErrorDocument 404 https://%s/\n# SALKSD SECURE END\n' "$cover_host" "$cover_host" >> "$FILE_PATH/.htaccess.rules"
     mv "$FILE_PATH/.htaccess.rules" "$FILE_PATH/.htaccess.new" || return 1
     if [[ -f "$FILE_PATH/.htaccess" ]]; then
-        sed '/^# SALKSD SECURE BEGIN$/,/^# SALKSD SECURE END$/d' "$FILE_PATH/.htaccess" >> "$FILE_PATH/.htaccess.new"
+        # Remove only obsolete generated routes and filenames, preserving other site directives.
+        sed '/^# SALKSD SECURE BEGIN$/,/^# SALKSD SECURE END$/d' "$FILE_PATH/.htaccess" |
+          awk '!($1=="RewriteRule" && $3 ~ /^[A-Za-z0-9_-]+\.php$/) {
+            if ($0 ~ /<FilesMatch/ && $0 ~ /clash|singbox|nekobox/) { print "<FilesMatch \"^(p0[789]|list\\.txt|cert\\.pem|private\\.key)$\">"; next }
+            if ($0 ~ /<FilesMatch/ && $0 ~ /[A-Za-z0-9_-]+\\\.php/) print "<FilesMatch \"^index\\.html$\">"; else print
+          }' >> "$FILE_PATH/.htaccess.new"
     else
         printf 'DirectoryIndex index.html\n' >> "$FILE_PATH/.htaccess.new"
     fi
     chmod 644 "$FILE_PATH/.htaccess.new"
-    mv "$FILE_PATH/.htaccess.new" "$FILE_PATH/.htaccess"
+    mv "$FILE_PATH/.htaccess.new" "$FILE_PATH/.htaccess" || return 1
+    # Summary failure must not stop a healthy proxy service; cleanup then stays unavailable.
+    secure_backups_refresh || :
 }
 
 secure_install_landing() {
@@ -406,18 +452,18 @@ secure_panel_init() {
     chmod 644 "$data_dir/.htaccess"
     if [[ ! -e "$data_dir/panel.json" ]]; then
         settings=$(mktemp "$data_dir/.panel.XXXXXX") || return 1
-        jq -n --arg revision "$(openssl rand -hex 32)" '{password_hash:"",revision:$revision}' > "$settings" || return 1
+        secure_jq -n --arg revision "$(openssl rand -hex 32)" '{password_hash:"",revision:$revision}' > "$settings" || return 1
         chmod 600 "$settings"
-        mv "$settings" "$data_dir/panel.json" || return 1
+        secure_store "$settings" "$data_dir/panel.json" && rm -f "$settings" || return 1
     fi
     # Corrupt settings must not silently disable an existing password.
-    jq -e '(.password_hash|type)=="string" and (.revision|test("^[0-9a-f]{64}$"))' "$data_dir/panel.json" >/dev/null
+    secure_jq -e '(.password_hash|type)=="string" and (.revision|test("^[0-9a-f]{64}$"))' "$data_dir/panel.json" >/dev/null
 }
 
 secure_panel_result() {
     local status=$1 id=$2 data_dir="$FILE_PATH/.salksd-data" result
     result=$(mktemp "$data_dir/.result.XXXXXX") || return 1
-    jq -n --arg status "$status" --arg id "$id" --arg action "${3:-change-ports}" --argjson at "$(date +%s)" \
+    secure_jq -n --arg status "$status" --arg id "$id" --arg action "${3:-change-ports}" --argjson at "$(date +%s)" \
       '{status:$status,id:$id,action:$action,updated_at:$at}' > "$result" || return 1
     chmod 600 "$result"
     mv "$result" "$data_dir/result.json"
@@ -437,7 +483,7 @@ secure_panel_poll() {
         return 1
     fi
     rmdir "$data_dir/queue.lock"
-    if ! jq -e '(if .action=="change-ports" then
+    if ! secure_jq -e '(if .action=="change-ports" then
           ((keys-["action","created_at","id","protocol"]|length)==0) and
           ((.protocol // "all") as $p | ["all","vless","tuic","hysteria2"]|index($p)!=null)
         elif .action=="share-create" then
@@ -446,8 +492,16 @@ secure_panel_poll() {
           (.duration|type)=="number" and .duration>=60 and .duration<=31622400 and (.duration|floor)==.duration
         elif .action=="share-revoke" or .action=="share-delete" then
           keys==["action","created_at","id","share_id"] and (.share_id|test("^[0-9a-f]{32}$"))
-        elif .action=="share-prune" then
+        elif .action=="share-prune" or .action=="backup-refresh" then
           keys==["action","created_at","id"]
+        elif .action=="backup-prune" then
+          keys==["action","created_at","id","keep","revision"] and
+          (.keep|type)=="number" and .keep>=1 and .keep<=1000 and (.keep|floor)==.keep and
+          (.revision|test("^[0-9a-f]{64}$"))
+        elif .action=="rules-save" then
+          keys==["action","created_at","id","rules"] and
+          (.rules|type)=="object" and (.rules|keys)==["ini","mode"] and
+          (.rules.mode=="default" or .rules.mode=="custom") and (.rules.ini|type)=="string" and (.rules.ini|length)<=262144
         else false end) and
         (.id|type)=="string" and (.id|test("^[0-9a-f]{32}$")) and
         (.created_at|type)=="number" and (.created_at|floor)==.created_at' "$data_dir/running.json" >/dev/null 2>&1; then
@@ -455,10 +509,10 @@ secure_panel_poll() {
         rm -f "$data_dir/running.json"
         return 1
     fi
-    id=$(jq -r '.id' "$data_dir/running.json")
-    action=$(jq -r '.action' "$data_dir/running.json")
-    created=$(jq -r '.created_at' "$data_dir/running.json")
-    protocol=$(jq -r '.protocol // "all"' "$data_dir/running.json")
+    id=$(secure_jq -r '.id' "$data_dir/running.json")
+    action=$(secure_jq -r '.action' "$data_dir/running.json")
+    created=$(secure_jq -r '.created_at' "$data_dir/running.json")
+    protocol=$(secure_jq -r '.protocol // "all"' "$data_dir/running.json")
     now=$(date +%s)
     if (( created < now - 300 || created > now + 30 )); then
         secure_panel_result expired "$id"
@@ -547,6 +601,18 @@ secure_stop_managed() {
     [[ -z "$(secure_core_pids)" ]]
 }
 
+secure_stop_workers() {
+    # Old workers cannot read the new persistent encoding. Stop only this service's
+    # worker before migration; leave the core accepting connections until checks pass.
+    [[ "${SALKSD_PANEL_IN_WORKER:-0}" != 1 ]] || return 0
+    local pid targets
+    targets=$(secure_worker_pids)
+    for pid in $targets; do targets="$targets $(pgrep -P "$pid" -x sleep)"; done
+    for pid in $targets; do kill "$pid" 2>/dev/null || :; done
+    [[ -z "$targets" ]] || sleep 1
+    for pid in $targets; do kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || :; done
+}
+
 secure_start_core() {
     secure_shares_apply "$CONFIG_FILE" || return 1
     nohup "$UNBOUND_EXEC" run -c "$CONFIG_FILE" >"${SECURE_BACKUP:-$SECURE_STATE}/startup.log" 2>&1 < /dev/null &
@@ -595,9 +661,9 @@ secure_recover_operation() {
     fi
     local pid
     for pid in $(secure_core_pids); do kill -KILL "$pid" 2>/dev/null || :; done
-    cp "$SECURE_BACKUP/recovered-server.json" "$CONFIG_FILE" || return 1
+    secure_read "$SECURE_BACKUP/recovered-server.json" > "$CONFIG_FILE" || return 1
     cp "$SECURE_BACKUP/recovered-cert.pem" "$WORKDIR/cert.pem" || return 1
-    cp "$SECURE_BACKUP/recovered-private.key" "$WORKDIR/private.key" || return 1
+    secure_read "$SECURE_BACKUP/recovered-private.key" > "$WORKDIR/private.key" || return 1
     secure_start_core || return 1
     secure_capture_config "$CONFIG_FILE" || return 1
     secure_restore_identity && secure_write_keepalive || return 1
@@ -640,7 +706,7 @@ secure_replace_ports() {
         done
         [[ "$added" == true ]] || return 1
     done
-    jq --argjson v "$VLESS_PORT" --argjson t "$TUIC_PORT" --argjson h "$HY2_PORT" \
+    secure_jq --argjson v "$VLESS_PORT" --argjson t "$TUIC_PORT" --argjson h "$HY2_PORT" \
       '.inbounds |= map(if .type=="vless" then .listen_port=$v elif .type=="tuic" then .listen_port=$t elif .type=="hysteria2" then .listen_port=$h else . end)' \
       "$CONFIG_FILE" > "$CONFIG_FILE.new" || return 1
     mv "$CONFIG_FILE.new" "$CONFIG_FILE"
@@ -649,17 +715,30 @@ secure_replace_ports() {
 secure_operation() (
     # Invoked by the worker with --restart / --change-ports; no installer/reset path.
     umask 077
-    local action=$1 protocol=${2:-all} request=${3:-}
+    local action=$1 protocol=${2:-all} request=${3:-} worker_stopped=0
     case "$protocol" in all|vless|tuic|hysteria2) ;; *) exit 1 ;; esac
     secure_init || exit 1
     if ! mkdir "$SECURE_STATE/operation.lock" 2>/dev/null; then
         echo '已有重启或端口操作在进行；请稍后再试。' >&2
         exit 1
     fi
-    trap 'rmdir "$SECURE_STATE/operation.lock" 2>/dev/null || :' EXIT
-    load_config && secure_backup && secure_restore_identity && secure_validate_state || exit 1
+    trap 'rmdir "$SECURE_STATE/operation.lock" 2>/dev/null || :; if [[ "${worker_stopped:-0}" == 1 ]]; then secure_start_worker || :; fi' EXIT
+    load_config || exit 1
+    if [[ "$action" == --backup-refresh ]]; then
+        secure_backups_refresh
+        exit $?
+    fi
+    if [[ "$action" == --backup-prune ]]; then
+        # Removing old backups must not create another full backup or restart the core.
+        secure_backups_prune "$request"
+        exit $?
+    fi
+    secure_backup && secure_stop_workers || exit 1
+    worker_stopped=1
+    secure_storage_migrate && secure_restore_identity && secure_validate_state || exit 1
     secure_shares_init || exit 1
     case "$action" in
+        --rules-save) secure_rules_change "$request"; exit $? ;;
         --share-delete|--share-prune)
             secure_share_remove "$action" "$request" && secure_publish
             exit $? ;;
@@ -674,7 +753,7 @@ secure_operation() (
     fi
     secure_prepare_certificate || exit 1
     if [[ -f "$SECURE_STATE/server.json" ]]; then
-        cp "$SECURE_STATE/server.json" "$CONFIG_FILE" || exit 1
+        secure_read "$SECURE_STATE/server.json" > "$CONFIG_FILE" || exit 1
     else
         generate_config_file || exit 1
     fi
@@ -689,7 +768,7 @@ secure_operation() (
     # Defer the HTTP installation/current-generation switch until the new core is healthy.
     SALKSD_PUBLISH_CONFIG="$CONFIG_FILE" SALKSD_STAGE_ONLY=1 secure_publish || { echo '订阅预检查失败。' >&2; exit 1; }
     # Record the recovered old configuration before changing any ports.
-    cp "$CONFIG_FILE" "$SECURE_BACKUP/recovered-server.json" || exit 1
+    secure_store "$CONFIG_FILE" "$SECURE_BACKUP/recovered-server.json" || exit 1
     cp "$SECURE_STATE/cert.pem" "$SECURE_BACKUP/recovered-cert.pem" || exit 1
     cp "$SECURE_STATE/private.key" "$SECURE_BACKUP/recovered-private.key" || exit 1
     secure_stop_managed || exit 1
@@ -724,23 +803,26 @@ secure_operation() (
 )
 
 secure_refresh_legacy() {
-    # Existing non-TUIC lines stay byte-for-byte intact except their changed ports.
+    # Preserve connection parameters while updating ports and requested ASCII labels.
     [[ -f "$FILE_PATH/list.txt" ]] || return 0
-    local v t h sni="${TLS_SERVER_NAME:-api.${USERNAME}.${CURRENT_DOMAIN}}"
-    v=$(jq -r '.inbounds[]|select(.type=="vless")|.listen_port' "$SECURE_STATE/server.json")
-    t=$(jq -r '.inbounds[]|select(.type=="tuic")|.listen_port' "$SECURE_STATE/server.json")
-    h=$(jq -r '.inbounds[]|select(.type=="hysteria2")|.listen_port' "$SECURE_STATE/server.json")
-    sed -E -e "s#^(vless://[^@]*@[^:]*:)[0-9]+#\\1$v#" \
+    local v t h prefix
+    prefix=$(secure_node_prefix) || return 1
+    v=$(secure_jq -r '.inbounds[]|select(.type=="vless")|.listen_port' "$SECURE_STATE/server.json")
+    t=$(secure_jq -r '.inbounds[]|select(.type=="tuic")|.listen_port' "$SECURE_STATE/server.json")
+    h=$(secure_jq -r '.inbounds[]|select(.type=="hysteria2")|.listen_port' "$SECURE_STATE/server.json")
+    secure_read "$FILE_PATH/list.txt" | sed -E -e "s#^(vless://[^@]*@[^:]*:)[0-9]+#\\1$v#" \
       -e "s#^(tuic://[^@]*@[^:]*:)[0-9]+#\\1$t#" \
       -e "s#^(hysteria2://[^@]*@[^:]*:)[0-9]+#\\1$h#" \
-      "$FILE_PATH/list.txt" > "$FILE_PATH/list.txt.new" || return 1
-    mv "$FILE_PATH/list.txt.new" "$FILE_PATH/list.txt"
-    base64 < "$FILE_PATH/list.txt" | tr -d '\n' > "$FILE_PATH/v2.log"
+      -e "s|^(vless://[^#]*)(#.*)?$|\\1#${prefix}-VLESS|" \
+      -e "s|^(tuic://[^#]*)(#.*)?$|\\1#${prefix}-TUIC%20%5BSkipVerify%5D|" \
+      -e "s|^(hysteria2://[^#]*)(#.*)?$|\\1#${prefix}-HY2%20%5BSkipVerify%5D|" \
+      > "$FILE_PATH/list.txt.new" || return 1
+    secure_store "$FILE_PATH/list.txt.new" "$FILE_PATH/list.txt" && rm -f "$FILE_PATH/list.txt.new"
     # Keep all old adaptive subscription formats synchronized without sending
     # credentials to a third-party converter. Their URL/token is unchanged.
     local generation
     generation=$(cat "$SECURE_STATE/current") || return 1
-    cp "$SECURE_STATE/$generation/mihomo-all.yaml" "$FILE_PATH/clash.yaml" || return 1
-    cp "$SECURE_STATE/$generation/singbox-all.json" "$FILE_PATH/singbox.yaml" || return 1
-    cp "$SECURE_STATE/$generation/v2.log" "$FILE_PATH/v2.log" || return 1
+    cp "$SECURE_STATE/$generation/p09" "$FILE_PATH/p09" || return 1
+    cp "$SECURE_STATE/$generation/p08" "$FILE_PATH/p08" || return 1
+    cp "$SECURE_STATE/$generation/p07" "$FILE_PATH/p07" || return 1
 }

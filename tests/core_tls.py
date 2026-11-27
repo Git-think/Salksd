@@ -1,3 +1,4 @@
+from storage_codec import read as stored_read, write as stored_write
 #!/usr/bin/env python3
 """Local TUIC/HY2 handshakes against real cores; no VPS or production credentials.
 
@@ -42,13 +43,14 @@ def main():
     generation = state / (state / 'current').read_text().strip()
     output = root / 'handshakes'
     output.mkdir(exist_ok=True)
-    source = json.loads((generation / 'nekobox.json').read_text(encoding='utf-8'))
-    mihomo = json.loads((generation / 'mihomo.yaml').read_text(encoding='utf-8'))
+    source = json.loads(stored_read((generation / 'p01')))
+    mihomo = json.loads(stored_read((generation / 'p05')))
     subprocess.run([args.openssl, 'req', '-new', '-x509', '-newkey', 'ec', '-pkeyopt',
                     'ec_paramgen_curve:P-256', '-nodes', '-days', '1', '-subj', '/CN=wrong.example',
                     '-addext', 'subjectAltName=DNS:wrong.example', '-keyout', str(output/'wrong.key'),
                     '-out', str(output/'wrong.pem')], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     wrong = (output/'wrong.pem').read_text()
+    (output/'runtime-key.pem').write_text(stored_read(state/'private.key'), newline='\n')
     web = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     threading.Thread(target=web.serve_forever, daemon=True).start()
     ports = {p: free_port() for p in ['tuic', 'hysteria2']}
@@ -61,7 +63,7 @@ def main():
             user['uuid'] = outbound['uuid']
         inbound = {'type': outbound['type'], 'listen': '127.0.0.1', 'listen_port': ports[outbound['type']],
                    'users': [user], 'tls': {'enabled': True, 'alpn': ['h3'],
-                   'certificate_path': str(state/'cert.pem'), 'key_path': str(state/'private.key')}}
+                   'certificate_path': str(state/'cert.pem'), 'key_path': str(output/'runtime-key.pem')}}
         if outbound['type'] == 'tuic':
             inbound['congestion_control'] = 'bbr'
             inbound['zero_rtt_handshake'] = False
