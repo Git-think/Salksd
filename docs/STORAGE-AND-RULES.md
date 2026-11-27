@@ -68,3 +68,12 @@ v2rayN 7.25.6 使用原生 DTO PEM，NekoBox 1.4.2 / 1.12.19-neko-1 用 `tls.cer
 自动识别扩展到同类 sing-box 客户端 SFA/SFI/SFM、Nekoray、Karing、Hiddify；Mihomo 家族通过 Clash/Mihomo User-Agent 或 `/c`；普通 URI 客户端 Shadowrocket、Streisand、Loon、Happ、V2Box 按 Base64 标准 URI 获取可识别的兼容节点。这些客户端不统一宣称全部协议/PEM 已实测，无法使用原生 v2rayN DTO 的软件不下发假装可验证的 PEM URI。
 
 2026-11-28 源码检查：v2rayNG 2.3.15 的 `V2rayNShareItem.kt` 注释 `Cert`，`ConfigType=8` TUIC 未实现；自动 Base64 响应仅提供 VLESS 和明确 `[SkipVerify]` HY2 两节点，不能声称有五节点或安全 TUIC。Hiddify v5.9.15 下载后交由核心校验/生成完整配置，其 GUI/PEM 保留仍未实测；Karing v1.2.26.2934 发布信息已确认，完整导入未实测。始终优先使用前述三类已验证的核心机制。
+
+本轮对照的一手源码：
+
+- [ACL4SSR 官方模板，固定提交 a7bdd9c](https://github.com/ACL4SSR/ACL4SSR/blob/a7bdd9c97c3c4a1d01a7259bba7c23c275794cc7/Clash/config/ACL4SSR_Online.ini)
+- [v2rayNG 2.3.15 原生导入字段](https://github.com/2dust/v2rayNG/blob/2.3.15/V2rayNG/app/src/main/java/com/v2ray/ang/dto/V2rayNShareItem.kt)
+- [Hiddify v5.9.15 配置校验与生成入口](https://github.com/hiddify/hiddify-app/blob/v5.9.15/lib/features/profile/data/profile_repository.dart)
+- [Karing v1.2.26.2934 发布记录](https://github.com/KaringX/karing/releases/tag/v1.2.26.2934)
+
+部署验证：源码 `6b4df5a`、混淆分支 `747f063`，Actions `46069586981` 成功。两份云端产物与已审阅及实机运行版本逐字相同。SSH 测试只执行重启、单端口更换和独立临时目录的备份测试，没有初始化或完整安装。
