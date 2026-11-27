@@ -113,6 +113,8 @@ require __DIR__ . '/secure-sub.php';
             assert request(share,browser=False,extra={'User-Agent':''})[:2] == (200, cover)
             assert request(dict(share,format='manage'),browser=False)[:2] == (200, cover)
             assert request(share,{'action':'share-create'},browser=False)[:2] == (200, cover)
+            assert request(share,{'action':'share-delete','share_id':share_id},browser=False)[:2] == (200, cover)
+            assert request(share,{'action':'share-prune'},browser=False)[:2] == (200, cover)
             status, text, _ = request(feed, browser=False)
             assert status == 200 and json.loads(text) == payload
             status, text, _ = request(feed, extra={'User-Agent': 'Mozilla/5.0 NekoBox/1.4.2'})
@@ -123,6 +125,7 @@ require __DIR__ . '/secure-sub.php';
             assert json.loads(request(share, browser=False, extra={'User-Agent':'FlClash/0.9.4'})[1]) == {'proxies': []}
             csrf, text, headers = page(feed)
             assert '更换全部端口' in text and '更换 TUIC 端口' in text and 'Content-Security-Policy' in headers
+            assert '清理全部已失效记录' in text and '删除记录' in text
             assert 'Secure' in headers['Set-Cookie'] or 'secure' in headers['Set-Cookie']
             assert 'HttpOnly' in headers['Set-Cookie'] and 'SameSite=Strict' in headers['Set-Cookie']
             assert not (data / 'request.json').exists()
@@ -177,9 +180,26 @@ require __DIR__ . '/secure-sub.php';
             csrf, _, _ = page(main,client='new')
             assert request(main,{'action':'share-revoke','csrf':csrf,'share_id':share_id},client='new')[0]==303
             assert json.loads((data/'request.json').read_text())['share_id']==share_id
+            (data/'request.json').unlink()
+            csrf, _, _ = page(main,client='new')
+            assert request(main,{'action':'share-delete','csrf':csrf,'share_id':share_id},client='new')[0]==409
+            assert not (data/'request.json').exists()
+            bundle['share_index'][0]['expires_at']=1
             bundle['shares'][hashlib.sha256(share_token.encode()).hexdigest()]['expires_at']=1
             (data/'bundle.json').write_text(json.dumps(bundle))
             assert request(share,browser=False)[:2]==(200,cover)
+            assert request(main,{'action':'share-delete','csrf':csrf,'share_id':share_id},client='new')[0]==303
+            queued=json.loads((data/'request.json').read_text())
+            assert queued['action']=='share-delete' and queued['share_id']==share_id
+            assert set(queued)=={'id','action','created_at','share_id'}
+            (data/'request.json').unlink()
+            csrf, _, _ = page(main,client='new')
+            assert request(main,{'action':'share-prune','csrf':csrf},client='new')[0]==303
+            queued=json.loads((data/'request.json').read_text())
+            assert queued['action']=='share-prune' and set(queued)=={'id','action','created_at'}
+            (data/'request.json').unlink()
+            (data/'result.json').write_text(json.dumps({'status':'success','action':'share-prune','updated_at':time.time()}))
+            assert '已清理失效分享记录。' in page(main,client='new')[1]
             (data / 'panel.json').write_text('{broken')
             assert request(main)[0] == 503
             assert request(feed, browser=False)[0] == 200

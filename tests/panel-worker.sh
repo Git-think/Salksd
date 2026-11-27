@@ -14,7 +14,7 @@ data="$FILE_PATH/.salksd-data"
 load_config() { :; }
 secure_operation() {
     [[ "$SALKSD_PANEL_IN_WORKER" == 1 ]]
-    case "$1" in --change-ports|--share-create|--share-revoke) ;; *) return 1 ;; esac
+    case "$1" in --change-ports|--share-create|--share-revoke|--share-delete|--share-prune) ;; *) return 1 ;; esac
     printf '%s\n' "${2:-all}" >> "$TEST_ROOT/operations"
     [[ "${FAIL_OPERATION:-0}" == 0 ]]
 }
@@ -49,3 +49,14 @@ secure_panel_poll
 jq -e '.status=="failed"' "$data/result.json" >/dev/null
 [[ ! -f "$data/running.json" ]]
 echo 'PASS: queue claim, one execution, expiry, fixed action allowlist and error result'
+FAIL_OPERATION=0
+for action in share-delete share-prune; do
+    jq -n --arg action "$action" --argjson now "$(date +%s)" \
+      '{action:$action,id:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",created_at:$now} +
+       (if $action=="share-delete" then {share_id:"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"} else {} end)' > "$data/request.json"
+    secure_panel_poll
+    jq -e --arg action "$action" '.status=="success" and .action==$action' "$data/result.json" >/dev/null
+done
+jq -n --argjson now "$(date +%s)" '{action:"share-prune",id:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",created_at:$now,all:true}' > "$data/request.json"
+if secure_panel_poll; then echo 'ERROR: accepted unlisted cleanup fields'; exit 1; fi
+echo 'PASS: delete/prune actions accepted; unlisted cleanup fields rejected'

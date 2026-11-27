@@ -17,6 +17,10 @@ for id in aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb; do
     secure_share_edit --share-create "$SECURE_STATE/request-test.json"
 done
 [[ $(jq length "$SECURE_STATE/shares.json") -eq 2 ]]
+# Active shares cannot be deleted even if a caller bypasses the panel.
+jq -n '{share_id:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' > "$SECURE_STATE/remove-test.json"
+if secure_share_remove --share-delete "$SECURE_STATE/remove-test.json"; then exit 1; fi
+[[ $(jq length "$SECURE_STATE/shares.json") -eq 2 ]]
 secure_share_edit --share-create "$SECURE_STATE/request-test.json"
 [[ $(jq length "$SECURE_STATE/shares.json") -eq 2 ]]
 # Resource/RNG failures must never replace the good ledger with empty credentials.
@@ -68,12 +72,73 @@ jq '.[0].expires_at=1' "$SECURE_STATE/shares.json" > "$SECURE_STATE/expired.json
 mv "$SECURE_STATE/expired.json" "$SECURE_STATE/shares.json"
 jq -n '{share_id:"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}' > "$SECURE_STATE/request-test.json"
 secure_share_edit --share-revoke "$SECURE_STATE/request-test.json"
+# Do not clean history until the associated server users have been removed.
+if secure_share_remove --share-prune "$SECURE_STATE/request-test.json"; then exit 1; fi
+[[ $(jq length "$SECURE_STATE/shares.json") -eq 2 ]]
 secure_shares_apply "$SECURE_STATE/server.json"
 jq -e 'all(.inbounds[];.users|length==1)' "$SECURE_STATE/server.json" >/dev/null
 secure_publish
 jq -e '.shares|length==0' "$FILE_PATH/.salksd-data/bundle.json" >/dev/null
 cmp <(jq -S '[.inbounds[].users[0]]' "$SECURE_STATE/owner-before.json") <(jq -S '[.inbounds[].users[0]]' "$SECURE_STATE/server.json")
 echo 'PASS: expiry and revocation remove all three protocol accounts; owner retained'
+# Deletion keeps an independent active share and never restarts/modifies the core.
+retired_token=$(jq -r '.[0].token' "$SECURE_STATE/shares.json")
+jq -n '{id:"cccccccccccccccccccccccccccccccc",duration:3600,label:"still active"}' > "$SECURE_STATE/request-test.json"
+secure_share_edit --share-create "$SECURE_STATE/request-test.json"
+secure_shares_apply "$SECURE_STATE/server.json"
+cp "$SECURE_STATE/server.json" "$SECURE_STATE/before-removal.json"
+jq '[.[]|select(.id=="cccccccccccccccccccccccccccccccc")]' "$SECURE_STATE/shares.json" > "$SECURE_STATE/active-share.json"
+secure_share_remove --share-delete "$SECURE_STATE/remove-test.json"
+[[ $(jq length "$SECURE_STATE/shares.json") -eq 2 ]]
+secure_share_remove --share-delete "$SECURE_STATE/remove-test.json"
+secure_share_remove --share-prune "$SECURE_STATE/remove-test.json"
+cmp "$SECURE_STATE/active-share.json" "$SECURE_STATE/shares.json"
+cmp "$SECURE_STATE/before-removal.json" "$SECURE_STATE/server.json"
+[[ $(jq length "$SECURE_STATE/share-retired.json") -eq 2 ]]
+if secure_share_token_available "$retired_token"; then exit 1; fi
+secure_publish
+jq -e '.share_index|length==1' "$FILE_PATH/.salksd-data/bundle.json" >/dev/null
+echo 'PASS: individual/repeated/bulk deletion preserves active accounts and reserves old URLs'
+# Failing to save the retired-token list must leave the record intact.
+jq -n '{share_id:"cccccccccccccccccccccccccccccccc"}' > "$SECURE_STATE/remove-test.json"
+secure_share_edit --share-revoke "$SECURE_STATE/remove-test.json"
+secure_shares_apply "$SECURE_STATE/server.json"
+cp "$SECURE_STATE/shares.json" "$SECURE_STATE/before-failed-removal.json"
+(
+    mv() { [[ "${2:-}" != "$SECURE_STATE/share-retired.json" ]] || return 1; command mv "$@"; }
+    if secure_share_remove --share-delete "$SECURE_STATE/remove-test.json"; then exit 1; fi
+)
+cmp "$SECURE_STATE/before-failed-removal.json" "$SECURE_STATE/shares.json"
+secure_share_remove --share-delete "$SECURE_STATE/remove-test.json"
+jq -n '{id:"dddddddddddddddddddddddddddddddd",duration:60,label:"collision"}' > "$SECURE_STATE/request-test.json"
+(
+    openssl() { if [[ "$*" == 'rand -base64 6' ]]; then printf '%s\n' "$retired_token"; else command openssl "$@"; fi; }
+    if secure_share_edit --share-create "$SECURE_STATE/request-test.json"; then exit 1; fi
+)
+[[ $(jq length "$SECURE_STATE/shares.json") -eq 0 ]]
+jq '.id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' "$SECURE_STATE/request-test.json" > "$SECURE_STATE/replayed-request.json"
+if secure_share_edit --share-create "$SECURE_STATE/replayed-request.json"; then exit 1; fi
+secure_publish
+echo 'PASS: deletion failure leaves record intact; old tokens and create IDs cannot be reused'
+(
+    SECURE_STATE="$SALKSD_TEST_ROOT/capacity-state"
+    mkdir -p "$SECURE_STATE"
+    cp "$SALKSD_TEST_ROOT/state/server.json" "$SECURE_STATE/server.json"
+    "${PYTHON:-python3}" - "$SECURE_STATE/shares.json" <<'PY'
+import json,sys
+from pathlib import Path
+records=[dict(id=f'{i+1024:032x}',token=f'{i:08x}',label='',created_at=0,expires_at=1,revoked_at=0,
+ vless_uuid=f'00000000-0000-4000-8000-{i:012x}',tuic_uuid=f'00000000-0000-4000-8000-{i+128:012x}',
+ tuic_password=f'{i:064x}',hy2_password=f'{i+128:064x}') for i in range(128)]
+Path(sys.argv[1]).write_text(json.dumps(records),encoding='utf-8')
+PY
+    if secure_share_edit --share-create "$SALKSD_TEST_ROOT/state/request-test.json"; then exit 1; fi
+    secure_share_remove --share-prune "$SALKSD_TEST_ROOT/state/request-test.json"
+    secure_share_edit --share-create "$SALKSD_TEST_ROOT/state/request-test.json"
+    [[ $(jq length "$SECURE_STATE/shares.json") -eq 1 ]]
+    [[ $(jq length "$SECURE_STATE/share-retired.json") -eq 128 ]]
+)
+echo 'PASS: clearing 128 inactive records restores capacity for new shares'
 # Watchdog checks both lease generation and process start identity before signalling.
 jq -n '{pid:777,deadline:1,start:"fixture start",generation:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' > "$SECURE_STATE/core-lease"
 ps() { printf 'fixture start\n'; }

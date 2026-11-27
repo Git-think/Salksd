@@ -20,7 +20,7 @@ secure_backup() {
     SECURE_BACKUP="$SECURE_STATE/backups/$(date +%Y%m%d-%H%M%S)-$$-$(openssl rand -hex 3)"
     (umask 077; mkdir "$SECURE_BACKUP") || return 1
     local item
-    for item in cert.pem private.key server.json identity.json token legacy-token shares.json current published-fingerprint; do
+    for item in cert.pem private.key server.json identity.json token legacy-token shares.json share-retired.json current published-fingerprint; do
         [[ ! -f "$SECURE_STATE/$item" ]] || cp -p "$SECURE_STATE/$item" "$SECURE_BACKUP/$item" || return 1
     done
     # Keep the complete affected website and worker files, including the old script.
@@ -444,8 +444,10 @@ secure_panel_poll() {
           keys==["action","created_at","duration","id","label"] and
           (.label|type)=="string" and (.label|length)<=80 and
           (.duration|type)=="number" and .duration>=60 and .duration<=31622400 and (.duration|floor)==.duration
-        elif .action=="share-revoke" then
+        elif .action=="share-revoke" or .action=="share-delete" then
           keys==["action","created_at","id","share_id"] and (.share_id|test("^[0-9a-f]{32}$"))
+        elif .action=="share-prune" then
+          keys==["action","created_at","id"]
         else false end) and
         (.id|type)=="string" and (.id|test("^[0-9a-f]{32}$")) and
         (.created_at|type)=="number" and (.created_at|floor)==.created_at' "$data_dir/running.json" >/dev/null 2>&1; then
@@ -658,6 +660,9 @@ secure_operation() (
     load_config && secure_backup && secure_restore_identity && secure_validate_state || exit 1
     secure_shares_init || exit 1
     case "$action" in
+        --share-delete|--share-prune)
+            secure_share_remove "$action" "$request" && secure_publish
+            exit $? ;;
         --share-create|--share-revoke) secure_share_edit "$action" "$request" || exit 1 ;;
         --restart|--change-ports|--sync-shares) ;;
         *) exit 1 ;;

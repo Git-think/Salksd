@@ -180,7 +180,7 @@ if ($method === 'POST') {
             $_SESSION['auth_until'] = time() + 1800;
             redirect_panel($panelPath, $mode === 'set' ? '管理密码已设置，其他登录已失效。' : '已取消额外密码；请保管好私密管理链接。');
         }
-        if (!in_array($action, ['change-ports','share-create','share-revoke'], true)) { stop_request(400); }
+        if (!in_array($action, ['change-ports','share-create','share-revoke','share-delete','share-prune'], true)) { stop_request(400); }
         $task = ['id'=>bin2hex(random_bytes(16)), 'action'=>$action, 'created_at'=>time()];
         if ($action === 'change-ports') {
             $protocol = field($_POST, 'protocol');
@@ -195,9 +195,17 @@ if ($method === 'POST') {
             }
             $task['duration'] = (int)$minutes * 60;
             $task['label'] = $label;
-        } else {
+        } elseif ($action === 'share-revoke' || $action === 'share-delete') {
             $id = field($_POST, 'share_id');
             if (!preg_match('/^[0-9a-f]{32}$/D', $id)) { stop_request(400); }
+            if ($action === 'share-delete') {
+                foreach ($bundle['share_index'] ?? [] as $entry) {
+                    if (($entry['id'] ?? '') === $id && (int)($entry['revoked_at'] ?? 0) === 0 &&
+                        (int)($entry['expires_at'] ?? 0) > time()) {
+                        stop_request(409, '有效分享请先撤销，再删除记录。');
+                    }
+                }
+            }
             $task['share_id'] = $id;
         }
         // Shared with the worker's atomic claim. Only a fixed command is queued.
@@ -233,6 +241,9 @@ $messages = ['idle'=>'尚未提交操作。', 'queued'=>'已排队，等待保�
     'failed'=>'操作失败。请检查服务状态和私有备份中的记录，再决定是否重试。',
     'expired'=>'请求已过期，未执行。', 'rejected'=>'请求格式无效，未执行。'];
 $message = $messages[$state] ?? '状态未知，请检查服务。';
+if ($state === 'success' && in_array($result['action'] ?? '', ['share-delete','share-prune'], true)) {
+    $message = '已清理失效分享记录。';
+}
 if (in_array($state, ['queued', 'running'], true) && time() - (int)($result['updated_at'] ?? 0) > 600) {
     $message = '等待超时，无法确认操作结果。请检查保活状态；系统不会自动重复执行。';
 }
@@ -291,17 +302,24 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;bord
 <label for="confirm_password">再次输入新密码</label><input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" maxlength="72"><button>保存密码设置</button></form>
 <?php if ($config['password_hash'] !== '' || !$strong): ?><form method="post"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="action" value="logout"><button>退出登录</button></form><?php endif ?>
 </section>
-<section><h2>限时分享</h2><p>分享使用独立账号。到期或撤销后，已导入的分享节点也会失效。操作会重启核心，现有连接短暂中断。</p>
+<section><h2>限时分享</h2><p>分享使用独立账号。到期或撤销后，已导入的分享节点也会失效。创建和撤销会重启核心，现有连接短暂中断；删除失效记录仅清理历史记录。</p>
 <form method="post"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="action" value="share-create">
 <label for="share-label">分享名称</label><input id="share-label" name="label" maxlength="80" placeholder="例如：朋友的手机">
 <label for="share-minutes">有效期（分钟）</label><input id="share-minutes" name="minutes" type="number" min="1" max="527040" value="1440" required>
-<small>1440 分钟为一天，10080 分钟为七天。</small><button>生成分享订阅</button></form>
+<small>1440 分钟为一天，10080 分钟为七天。</small><button class="share-action" <?= in_array($state, ['queued','running'], true) ? 'disabled' : '' ?>>生成分享订阅</button></form>
+<p id="share-count" class="muted"></p>
+<form method="post"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="action" value="share-prune">
+<button id="prune-shares">清理全部已失效记录</button></form>
+<small>最多保留 128 条记录，删除已过期或已撤销记录可释放名额；旧分享地址保持失效。</small>
 <div id="shares"></div><small>分享地址只响应支持的代理客户端；其他访问和过期地址显示公开宣传页。已分享过的自用账号不会因此撤销。</small></section>
 <script nonce="<?= h($nonce) ?>">
 const statusURL = new URL(location.href); statusURL.searchParams.set('view', 'status');
 const csrf = <?= json_encode($csrf) ?>;
-function renderShares(shares) {
+function renderShares(shares, busy) {
   const box = document.getElementById('shares'); box.replaceChildren();
+  const inactive=shares.filter(s=>s.revoked_at || s.expires_at*1000<=Date.now()).length;
+  document.getElementById('share-count').textContent='已保留 '+shares.length+' / 128 条记录，其中 '+inactive+' 条已失效。';
+  document.getElementById('prune-shares').disabled=busy || inactive===0;
   for (const share of shares) {
     const item=document.createElement('div'); item.className='notice';
     const expired=share.expires_at * 1000 <= Date.now();
@@ -310,10 +328,12 @@ function renderShares(shares) {
     item.append(label,time);
     if (!share.revoked_at && !expired) {
       const input=document.createElement('input');input.readOnly=true;input.value=location.origin+'/'+share.token;input.setAttribute('aria-label','分享订阅地址');item.append(input);
-      const form=document.createElement('form');form.method='post';
-      for (const [name,value] of Object.entries({csrf,action:'share-revoke',share_id:share.id})) {const field=document.createElement('input');field.type='hidden';field.name=name;field.value=value;form.append(field);}
-      const button=document.createElement('button');button.textContent='撤销分享';form.append(button);item.append(form);
     }
+    const form=document.createElement('form');form.method='post';
+    const action=share.revoked_at || expired ? 'share-delete' : 'share-revoke';
+    for (const [name,value] of Object.entries({csrf,action,share_id:share.id})) {const field=document.createElement('input');field.type='hidden';field.name=name;field.value=value;form.append(field);}
+    const button=document.createElement('button');button.className='share-action';button.disabled=busy;
+    button.textContent=action==='share-delete' ? '删除记录' : '撤销分享';form.append(button);item.append(form);
     box.append(item);
   }
 }
@@ -327,14 +347,14 @@ async function refreshStatus() {
     for (const protocol of ['vless','tuic','hysteria2']) {
       document.getElementById('port-' + protocol).textContent = data.ports[protocol] ?? '—';
     }
-    for (const button of document.querySelectorAll('.port-action')) {
+    for (const button of document.querySelectorAll('.port-action, .share-action')) {
       button.disabled = ['queued','running'].includes(data.status);
     }
-    renderShares(data.shares);
+    renderShares(data.shares, ['queued','running'].includes(data.status));
   } catch (_) { document.getElementById('status').textContent = '暂时无法获取状态，请刷新页面查看。'; }
 }
 setInterval(refreshStatus, 3000);
-renderShares(<?= json_encode($bundle['share_index'] ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+renderShares(<?= json_encode($bundle['share_index'] ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= in_array($state, ['queued','running'], true) ? 'true' : 'false' ?>);
 </script>
 <?php endif ?>
 </main></body></html>
