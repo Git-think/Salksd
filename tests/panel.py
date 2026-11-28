@@ -28,7 +28,22 @@ def run(php):
         data = root / '.salksd-data'
         (data / 'sessions').mkdir(parents=True)
         shutil.copyfile(ROOT / 'lib/sub-router.php', root / 'secure-sub.php')
-        shutil.copyfile(ROOT / 'lib/php-runtime.php', root / 'php-runtime.php')
+        runtime=(ROOT / 'lib/php-runtime.php').read_text(encoding='utf8')
+        # Mock only the network body. The real URL validator, template compiler,
+        # cache, router and persisted task handling remain under test.
+        runtime=runtime.replace('function acl_fetch(string $url): string {','function acl_network_fetch(string $url): string {',1)
+        runtime += '''
+function acl_fetch(string $url): string {
+    if ($url==='https://rules.fixture.test/default.ini') {
+        file_put_contents(__DIR__.'/fetch-count','x',FILE_APPEND);
+        $body=file_get_contents(__DIR__.'/fixture.ini');
+        if ($body==='!download-failed') { throw new RuntimeException('fixture network failure'); }
+        return $body;
+    }
+    return acl_network_fetch($url);
+}
+'''
+        (root / 'php-runtime.php').write_text(runtime,encoding='utf8')
         shutil.copyfile(ROOT / 'lib/public-index.html', root / 'index.html')
         cover = (root/'index.html').read_text(encoding='utf-8')
         token = 'a' * 64
@@ -163,6 +178,10 @@ require __DIR__ . '/secure-sub.php';
             assert '清理全部已失效记录' in text and '删除记录' in text
             assert '备份清理' in text and '保留最近几份自动备份' in text
             assert '订阅格式与分流' in text and '保存默认模板' in text
+            for suffix in ('','c','b','s','n'):
+                full=f'https://127.0.0.1:{port}/{token}'+('/'+suffix if suffix else '')
+                assert f'value="{full}"' in text
+            assert text.count('data-copy=')==6
             assert 'Secure' in headers['Set-Cookie'] or 'secure' in headers['Set-Cookie']
             assert 'HttpOnly' in headers['Set-Cookie'] and 'SameSite=Strict' in headers['Set-Cookie']
             assert not (data / 'request.json').exists()
@@ -261,6 +280,90 @@ require __DIR__ . '/secure-sub.php';
             csrf,_,_=page(main,client='new')
             assert request(main,{'action':'rules-save','csrf':csrf,'rules-mode':'paste','rules-ini':'[custom]\nwrong=true'},client='new')[0]==422
             assert not (data/'request.json').exists()
+            default_url='https://rules.fixture.test/default.ini'
+            (root/'fixture.ini').write_text(custom,encoding='utf8',newline='\n')
+            assert request(main,{'action':'rules-save','csrf':csrf,'rules-mode':'url','rules-url':default_url},client='new')[0]==303
+            queued=json.loads(stored_read(data/'request.json'))
+            assert queued['rules']=={'mode':'url','url':default_url,'ini':custom}
+            assert default_url.encode() not in (data/'request.json').read_bytes()
+            (data/'request.json').unlink()
+            # Emulate only the worker's publication; the real worker save is
+            # exercised by security.sh and its queue validation by panel-worker.sh.
+            bundle['rules']={**queued['rules'],'updated_at':int(time.time())}
+            stored_write(data/'bundle.json',json.dumps(bundle))
+            csrf,text,_=page(main,client='new')
+            assert '<option value="url" selected>' in text and f'value="{default_url}"' in text
+            expected=['GEOIP,CN,DIRECT','MATCH,Custom']
+            assert json.loads(request(dict(feed,f='c'))[1])['rules']==expected
+            # Shared clients use the same template, while their nodes stay isolated.
+            bundle['shares'][hashlib.sha256(share_token.encode()).hexdigest()]['expires_at']=int(time.time())+3600
+            stored_write(data/'bundle.json',json.dumps(bundle))
+            assert json.loads(request(dict(share,f='c'),browser=False)[1])['rules']==expected
+            later=custom.replace('GEOIP,CN','GEOIP,JP')
+            (root/'fixture.ini').write_text(later,encoding='utf8',newline='\n')
+            # A fresh save is used immediately, even when upstream has changed.
+            assert json.loads(request(dict(feed,f='c'))[1])['rules']==expected
+            bundle['rules']['updated_at']=int(time.time())-3601
+            stored_write(data/'bundle.json',json.dumps(bundle))
+            assert json.loads(request(dict(feed,f='c'))[1])['rules']==['GEOIP,JP,DIRECT','MATCH,Custom']
+            cache=data/'rules-state.json'
+            assert cache.read_bytes().startswith(b'SALKSD-STORE-1:') and 'GEOIP,JP' in stored_read(cache)
+            (root/'fixture.ini').write_text('[custom]\nwrong=true',encoding='utf8')
+            assert json.loads(request(dict(feed,f='c'))[1])['rules']==['GEOIP,JP,DIRECT','MATCH,Custom']
+            live=json.loads(stored_read(cache));live['checked_at']=int(time.time())-3601
+            stored_write(cache,json.dumps(live))
+            count=(root/'fetch-count').stat().st_size
+            # Merely opening the panel does not refresh or schedule a download.
+            page(main,client='new')
+            assert (root/'fetch-count').stat().st_size==count
+            fallback=request(dict(feed,f='c'))
+            assert fallback[0]==200 and fallback[2]['X-Subscription-Rules-Status']=='cached-fallback'
+            assert r'\/' not in fallback[1], 'Mihomo YAML rejects JSON escaped slashes'
+            content=json.loads(fallback[1]);assert content['rules']==['GEOIP,JP,DIRECT','MATCH,Custom']
+            notices=content['proxies']
+            assert len(notices)==2 and notices[0]['name'].startswith('[NOTICE]') and notices[1]['name'].startswith('[提醒]')
+            assert all(n['skip-cert-verify'] is False and n['server'].endswith('.invalid') for n in notices)
+            assert all(not any(x.startswith(('[NOTICE]','[提醒]')) for x in g['proxies']) for g in content['proxy-groups'] if g['name']!='[NOTICE] Messages')
+            failed=json.loads(stored_read(cache))
+            assert failed['ini']==live['ini'] and failed['status']=='stale' and failed['retry_at']>time.time()
+            alert=json.loads(request(dict(main,view='status'),client='new')[1])
+            assert alert['rules_status']['status']=='stale' and len(alert['notices'])==1 and 'zh' in alert['notices'][0]
+            assert '正在使用持久缓存' in page(main,client='new')[1]
+            for suffix in ('b','s','n','c'):
+                response=request(dict(feed,f=suffix))
+                assert response[0]==200
+                if suffix=='b':
+                    lines=base64.b64decode(response[1]).decode().splitlines()
+                    assert len(lines)==7 and '[NOTICE]' in urllib.parse.unquote(lines[-2]) and '[提醒]' in urllib.parse.unquote(lines[-1])
+                    assert lines[:-2]==base64.b64decode(bundle['content']['p07']).decode().splitlines()
+                elif suffix in ('s','n'):
+                    nodes=json.loads(response[1])['outbounds']
+                    assert nodes[:-2]==payload['outbounds'] and len(nodes)==3
+                    assert all(n['tls']['insecure'] is False for n in nodes[-2:])
+            assert (root/'fetch-count').stat().st_size==count+1, 'failed URL was retried within backoff'
+            assert len(json.loads(request(dict(share,f='c'),browser=False)[1])['proxies'])==2
+            assert json.loads(request(dict(feed,f='c',a=encoded_url(url)))[1])['rules']==expected
+            unchanged=(data/'bundle.json').read_bytes()
+            assert request(main,{'action':'rules-save','csrf':csrf,'rules-mode':'url','rules-url':default_url},client='new')[0]==422
+            assert not (data/'request.json').exists() and (data/'bundle.json').read_bytes()==unchanged
+            assert request(main,{'action':'rules-save','csrf':csrf,'rules-mode':'url','rules-url':'https://127.0.0.1/private'},client='new')[0]==422
+            # Each request starts a fresh PHP request context; a later network failure
+            # also preserves the same last validated INI, never the invalid download.
+            (root/'fixture.ini').write_text('!download-failed',encoding='utf8')
+            failed['retry_at']=int(time.time())-1;stored_write(cache,json.dumps(failed))
+            assert request(dict(feed,f='b'))[2]['X-Subscription-Rules-Status']=='cached-fallback'
+            failed=json.loads(stored_read(cache));assert failed['ini']==live['ini']
+            # A successful retry replaces the persistent snapshot and removes both notices.
+            (root/'fixture.ini').write_text(custom,encoding='utf8',newline='\n')
+            failed['retry_at']=int(time.time())-1;stored_write(cache,json.dumps(failed))
+            recovered=request(dict(feed,f='n'))
+            assert recovered[2]['X-Subscription-Rules-Status']=='ok' and json.loads(recovered[1])==payload
+            assert request(dict(feed,f='b'))[1]==bundle['content']['p07']
+            live=json.loads(stored_read(cache));assert live['status']=='ok' and live['ini']==custom
+            assert json.loads(request(dict(main,view='status'),client='new')[1])['notices']==[]
+            # The saved default stays separate from its refreshed persistent version.
+            assert (data/'bundle.json').read_bytes()==unchanged
+            print('PASS: full HTTPS links, default URL save/readback, request-only refresh, persistent fallback, bilingual notices, retry backoff, recovery and temporary override isolation')
             assert all(b'SALKSD-STORE-1:' in p.read_bytes() for p in (data/'sessions').iterdir() if p.is_file())
             (data / 'panel.json').write_text('{broken')
             assert request(main)[0] == 503

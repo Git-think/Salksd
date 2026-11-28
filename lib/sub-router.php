@@ -129,27 +129,21 @@ if (!$panel) {
             if (!preg_match('/^[A-Za-z0-9_-]{1,2732}$/D',$address)) { throw new RuntimeException('a 参数须为模板 HTTPS 地址的 Base64URL 编码。'); }
             $url=base64_decode(strtr($address,'-_','+/'),true);
             if ($url===false) { throw new RuntimeException('模板地址编码无效。'); } acl_url($url);
-            $cacheDirectory=$directory.'/templates';
-            if (!is_dir($cacheDirectory) && !mkdir($cacheDirectory,0700)) { throw new RuntimeException('模板缓存不可用。'); }
-            $cache=$cacheDirectory.'/'.hash('sha256',$url);
-            foreach (glob($cacheDirectory.'/*') ?: [] as $oldCache) {
-                if (!is_link($oldCache) && is_file($oldCache) && preg_match('/^[a-f0-9]{64}$/D',basename($oldCache)) && filemtime($oldCache)<time()-3600) { unlink($oldCache); }
-            }
-            if (!is_file($cache) && count(glob($cacheDirectory.'/*') ?: [])>=32) { throw new RuntimeException('临时模板缓存已满，请稍后重试。'); }
-            if (is_file($cache) && filemtime($cache)>time()-3600) {
-                $ini=stored_decode(file_get_contents($cache));
-            } else {
-                $ini=acl_fetch($url);
-                // Validate before caching; this response cannot override saved defaults.
-                acl_compile($ini,json_decode($response,true,512,JSON_THROW_ON_ERROR));
-                $temp=tempnam($cacheDirectory,'.cache-');
-                if ($temp===false) { throw new RuntimeException('模板缓存不可用。'); }
-                try { $bytes=stored_encode($ini); if (file_put_contents($temp,$bytes)!==strlen($bytes) || !rename($temp,$cache)) { throw new RuntimeException('模板缓存不可用。'); } }
-                finally { if (is_file($temp)) { unlink($temp); } }
-            }
-            $response=json_encode(acl_compile($ini,json_decode($response,true,512,JSON_THROW_ON_ERROR)),JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);
+            $response=json_encode(acl_cached_compile($directory.'/templates',$url,json_decode($response,true,512,JSON_THROW_ON_ERROR)),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);
         } catch (Throwable $e) { stop_request(422,'临时模板无法应用；默认模板未改变。'.$e->getMessage()); }
     }
+    $rulesStatus=acl_status($bundle['rules'] ?? [],$directory.'/rules-state.json');
+    if (($bundle['rules']['mode'] ?? '')==='url' && field($_GET,'a')==='') {
+        try {
+            $compiled=acl_subscription($bundle['rules'],json_decode($content['p09'],true,512,JSON_THROW_ON_ERROR),$directory,$rulesStatus);
+            if ($name==='p09') { $response=json_encode($compiled,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR); }
+        } catch (Throwable $e) { stop_request(422,'默认链接模板无法更新；已保存的设置未改变。'.$e->getMessage()); }
+    }
+    if ($rulesStatus!==null) {
+        header('X-Subscription-Rules-Status: '.($rulesStatus['status']==='stale'?'cached-fallback':'ok'));
+        header('X-Subscription-Rules-Updated: '.(int)$rulesStatus['updated_at']);
+    }
+    $response=subscription_notice($response,$name,subscription_notices($rulesStatus));
     header('Content-Type: ' . ($name === 'p08' ? 'application/json' : 'text/plain') . '; charset=utf-8');
     if ($method !== 'HEAD') { echo $response; }
     exit;
@@ -235,10 +229,11 @@ if ($method === 'POST') {
             $mode=field($_POST,'rules-mode');
             if (!in_array($mode,['default','paste','url'],true)) { stop_request(400); }
             try {
-                $ini=$mode==='default' ? acl_default() : ($mode==='url' ? acl_fetch(field($_POST,'rules-url')) : field($_POST,'rules-ini'));
+                $ini=$mode==='default' ? acl_default() : ($mode==='url' ? acl_fetch(trim(field($_POST,'rules-url'))) : field($_POST,'rules-ini'));
                 acl_compile($ini,json_decode($bundle['content']['p09'],true,512,JSON_THROW_ON_ERROR));
             } catch (Throwable $e) { throw new PanelError($e->getMessage(),422); }
-            $task['rules']=['mode'=>$mode==='default'?'default':'custom','ini'=>$ini];
+            $task['rules']=['mode'=>$mode==='url'?'url':($mode==='default'?'default':'custom'),'ini'=>$ini];
+            if ($mode==='url') { $task['rules']['url']=trim(field($_POST,'rules-url')); }
         } elseif ($action === 'change-ports') {
             $protocol = field($_POST, 'protocol');
             if (!in_array($protocol, ['all', 'vless', 'tuic', 'hysteria2'], true)) { stop_request(400); }
@@ -317,15 +312,21 @@ if (in_array($state, ['queued', 'running'], true) && time() - (int)($result['upd
     $message = '等待超时，无法确认操作结果。请检查保活状态；系统不会自动重复执行。';
 }
 $ports = array_intersect_key($bundle['ports'] ?? [], array_flip(['vless', 'tuic', 'hysteria2']));
+$rules = $bundle['rules'] ?? ['mode'=>'default'];
+$rulesRevision = hash('sha256',json_encode($rules));
+$rulesStatus = acl_status($rules,$directory.'/rules-state.json');
 if (field($_GET, 'view') === 'status') {
     if (!$access) { stop_request(401); }
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['status'=>$state, 'message'=>$message, 'ports'=>$ports,'shares'=>$bundle['share_index'] ?? [],
-        'backups'=>read_json($directory . '/backups.json')], JSON_UNESCAPED_UNICODE);
+        'backups'=>read_json($directory . '/backups.json'),'rules_revision'=>$rulesRevision,'rules_status'=>$rulesStatus,
+        'notices'=>subscription_notices($rulesStatus)], JSON_UNESCAPED_UNICODE);
     exit;
 }
 $notice = (string)($_SESSION['notice'] ?? '');
 unset($_SESSION['notice']);
+$rulesMode = ($rules['mode'] ?? 'default')==='custom' ? 'paste' : ($rules['mode'] ?? 'default');
+$subscriptionBase = 'https://' . (string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME']) . '/' . $token;
 $csrf = $_SESSION['csrf'];
 session_write_close();
 header('Content-Type: text/html; charset=utf-8');
@@ -344,6 +345,7 @@ input,select,textarea{width:100%;padding:9px;background:#111827;color:#fff;borde
 button{padding:10px 18px;margin-top:16px;border:0;background:#93c5fd;color:#102239;cursor:pointer}button:disabled{opacity:.5;cursor:wait}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid #374151}
 .notice{padding:12px;border-left:3px solid #93c5fd;background:#1f2937}small{display:block;margin-top:9px;color:#b7c2d2}
+.warning{border-left-color:#fbbf24;color:#fde68a}
 .backup-list{max-height:280px;overflow:auto} .backup-list td{font-size:14px}
 </style>
 </head>
@@ -384,18 +386,25 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;bord
 <small>最多保留 128 条记录，删除已过期或已撤销记录可释放名额；旧分享地址保持失效。</small>
 <div id="shares"></div><small>分享地址只响应支持的代理客户端；其他访问和过期地址显示公开宣传页。已分享过的自用账号不会因此撤销。</small></section>
 <section><h2>订阅格式与分流</h2>
-<p>原地址自动识别客户端；添加单字母路径可固定格式。下面的地址属于自用账号，请勿分享。</p>
-<?php foreach (['c'=>'Clash / Mihomo','b'=>'Base64 / v2rayN','s'=>'sing-box JSON','n'=>'NekoBox JSON'] as $letter=>$label): ?>
-<label><?= h($label) ?></label><input readonly value="<?= h('/'.$token.'/'.$letter) ?>">
+<p>直接复制完整地址到客户端。自动识别地址按客户端选择格式，其余地址固定格式。以下均为自用订阅。</p>
+<?php foreach ([''=>'自动识别客户端','c'=>'Clash / Mihomo','b'=>'Base64 / v2rayN','s'=>'sing-box JSON','n'=>'NekoBox JSON'] as $letter=>$label): $linkId='subscription-'.($letter ?: 'auto'); ?>
+<label for="<?= h($linkId) ?>"><?= h($label) ?></label><input id="<?= h($linkId) ?>" readonly value="<?= h($subscriptionBase.($letter!==''?'/'.$letter:'')) ?>">
+<button type="button" data-copy="<?= h($linkId) ?>">复制链接</button>
 <?php endforeach ?>
 <p>内置 ACL4SSR 官方公开规则集，可在本机合并自定义 INI。规则修改不重启核心，不改变节点证书验证。自定义模板仅影响 c 格式。</p>
+<p id="rules-status" class="notice<?= ($rulesStatus['status'] ?? '')==='stale'?' warning':'' ?>" role="status" <?= $rulesStatus===null?'hidden':'' ?>><?= h(($rulesStatus['status'] ?? '')==='stale'?'默认模板更新失败，正在使用持久缓存。':'默认模板链接正常。') ?></p>
 <form method="post"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="action" value="rules-save">
-<label for="rules-mode">默认模板</label><select id="rules-mode" name="rules-mode"><option value="default">内置 ACL4SSR 预设</option><option value="url">从 HTTPS 地址导入 INI</option><option value="paste">粘贴自定义 INI</option></select>
-<label for="rules-url">模板 HTTPS 地址</label><input id="rules-url" name="rules-url" type="url" maxlength="2048" placeholder="https://…/template.ini">
-<label for="rules-link">使用该模板的临时订阅地址</label><input id="rules-link" readonly placeholder="填写上方地址后自动生成">
-<label for="rules-ini">自定义 INI 内容</label><textarea id="rules-ini" name="rules-ini" maxlength="262144" spellcheck="false"></textarea>
+<label for="rules-mode">默认模板</label><select id="rules-mode" name="rules-mode">
+<?php foreach (['default'=>'内置 ACL4SSR 预设','url'=>'使用 HTTPS 链接作为默认模板','paste'=>'粘贴自定义 INI'] as $mode=>$label): ?>
+<option value="<?= h($mode) ?>" <?= $rulesMode===$mode ? 'selected' : '' ?>><?= h($label) ?></option>
+<?php endforeach ?></select>
+<div id="rules-url-fields"><label for="rules-url">默认模板 HTTPS 链接</label><input id="rules-url" name="rules-url" type="url" maxlength="2048" value="<?= h($rulesMode==='url' ? ($rules['url'] ?? '') : '') ?>" placeholder="https://…/template.ini">
+<small>自用和分享订阅均生效。有人拉取订阅且缓存超过一小时时才更新；无人拉取不下载。失败后继续使用持久缓存，五分钟后允许下次请求重试。订阅同时增加 [NOTICE] 英文和 [提醒] 中文两个提醒节点，恢复后下次更新订阅自动消失；该节点仅作提醒。</small></div>
+<div id="rules-ini-fields"><label for="rules-ini">自定义 INI 内容</label><textarea id="rules-ini" name="rules-ini" maxlength="262144" spellcheck="false"><?= h($rulesMode==='paste' ? ($rules['ini'] ?? '') : '') ?></textarea></div>
 <button class="rules-action" <?= in_array($state, ['queued','running'], true) ? 'disabled' : '' ?>>保存默认模板</button></form>
-<small>也可在订阅 URL 添加 ?f=c&amp;a=模板 HTTPS 地址的 Base64URL 编码，仅替换本次响应的模板，不改变以上默认设置。下载失败会报错并保留现有订阅。支持 ruleset、custom_proxy_group 及基本生成开关；不执行脚本或导入任意文件。</small>
+<label for="rules-override-url">临时模板 HTTPS 链接（不保存为默认）</label><input id="rules-override-url" type="url" maxlength="2048" placeholder="https://…/template.ini">
+<label for="rules-link">使用临时模板的完整订阅地址</label><input id="rules-link" readonly placeholder="填写上方临时模板链接后自动生成"><button type="button" data-copy="rules-link">复制链接</button>
+<small>也可在订阅 URL 添加 ?f=c&amp;a=模板 HTTPS 地址的 Base64URL 编码，仅替换本次响应的模板，不改变以上默认设置。临时模板下载失败会报错。支持 ruleset、custom_proxy_group 及基本生成开关；不执行脚本或导入任意文件。</small>
 </section>
 <section><h2>备份清理</h2><p>仅管理本服务的自动操作备份。默认保留全部历史，清理后删除的备份无法恢复。</p>
 <form method="post"><input type="hidden" name="csrf" value="<?= h($csrf) ?>"><input type="hidden" name="action" value="backup-refresh">
@@ -411,7 +420,31 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;bord
 <script nonce="<?= h($nonce) ?>">
 const statusURL = new URL(location.href); statusURL.searchParams.set('view', 'status');
 const csrf = <?= json_encode($csrf) ?>;
-document.getElementById('rules-url').addEventListener('input', event => {
+const rulesRevision = <?= json_encode($rulesRevision) ?>;
+let rulesDirty=false;
+for (const id of ['rules-mode','rules-url','rules-ini','rules-override-url']) {
+  document.getElementById(id).addEventListener('input',()=>rulesDirty=true);
+}
+for (const button of document.querySelectorAll('[data-copy]')) {
+  button.addEventListener('click', async () => {
+    const input=document.getElementById(button.dataset.copy); input.focus(); input.select();
+    try { await navigator.clipboard.writeText(input.value); button.textContent='已复制'; }
+    catch (_) { button.textContent='已选中，请复制'; }
+    setTimeout(()=>button.textContent='复制链接',2000);
+  });
+}
+function updateRulesFields() {
+  const mode=document.getElementById('rules-mode').value;
+  document.getElementById('rules-url-fields').hidden=mode!=='url';
+  document.getElementById('rules-ini-fields').hidden=mode!=='paste';
+  document.getElementById('rules-url').disabled=mode!=='url';
+  document.getElementById('rules-url').required=mode==='url';
+  document.getElementById('rules-ini').disabled=mode!=='paste';
+  document.getElementById('rules-ini').required=mode==='paste';
+}
+document.getElementById('rules-mode').addEventListener('change',updateRulesFields);
+updateRulesFields();
+document.getElementById('rules-override-url').addEventListener('input', event => {
   const output=document.getElementById('rules-link'); output.value='';
   try {
     const value=event.target.value.trim(), url=new URL(value);
@@ -421,6 +454,14 @@ document.getElementById('rules-url').addEventListener('input', event => {
   } catch (_) {}
 });
 let backupCatalog=null, backupBusy=false;
+function renderRulesStatus(status) {
+  const box=document.getElementById('rules-status');box.hidden=!status;
+  if(!status) return;
+  const date=value=>value?new Date(value*1000).toLocaleString():'未知';
+  const stale=status.status==='stale';box.classList.toggle('warning',stale);
+  box.textContent=stale ? '默认模板更新失败，正在使用持久缓存。失败时间：'+date(status.failed_at)+'；有效模板时间：'+date(status.updated_at)+'。'+status.error :
+    '默认模板链接正常。有效模板时间：'+date(status.updated_at)+'。仅在订阅请求时按需更新。';
+}
 function sizeText(kib) { return kib<1024 ? kib+' KiB' : (kib/1024).toFixed(1)+' MiB'; }
 function renderBackups(catalog, busy) {
   backupCatalog=catalog;backupBusy=busy;
@@ -472,7 +513,9 @@ async function refreshStatus() {
     if (response.status === 401) { location.reload(); return; }
     if (!response.ok) { throw new Error('status'); }
     const data = await response.json();
+    if (!rulesDirty && data.rules_revision!==rulesRevision) { location.reload(); return; }
     document.getElementById('status').textContent = data.message;
+    renderRulesStatus(data.rules_status);
     for (const protocol of ['vless','tuic','hysteria2']) {
       document.getElementById('port-' + protocol).textContent = data.ports[protocol] ?? '—';
     }
@@ -484,6 +527,7 @@ async function refreshStatus() {
   } catch (_) { document.getElementById('status').textContent = '暂时无法获取状态，请刷新页面查看。'; }
 }
 setInterval(refreshStatus, 3000);
+renderRulesStatus(<?= json_encode($rulesStatus,JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
 renderShares(<?= json_encode($bundle['share_index'] ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= in_array($state, ['queued','running'], true) ? 'true' : 'false' ?>);
 renderBackups(<?= json_encode(read_json($directory . '/backups.json'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= in_array($state, ['queued','running'], true) ? 'true' : 'false' ?>);
 </script>

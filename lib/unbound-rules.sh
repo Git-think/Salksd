@@ -35,8 +35,8 @@ secure_rules_apply() (
 try {
     $base=json_decode(stored_decode(file_get_contents($argv[1])),true,512,JSON_THROW_ON_ERROR);
     $settings=is_file($argv[2]) ? json_decode(stored_decode(file_get_contents($argv[2])),true,512,JSON_THROW_ON_ERROR) : ['mode'=>'default'];
-    $ini=($settings['mode'] ?? '')==='default' ? acl_default() : ($settings['ini'] ?? '');
-    echo stored_encode(json_encode(acl_compile($ini,$base),JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n");
+    $ini=acl_saved_ini($settings);
+    echo stored_encode(json_encode(acl_compile($ini,$base),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n");
 } catch (Throwable $e) { fwrite(STDERR,"规则模板处理失败，请在面板检查模板。\n"); exit(1); }
 PHP
     } | secure_php_wrapper > "$runner" || return 1
@@ -53,8 +53,11 @@ secure_rules_change() (
     previous=$(mktemp "$SECURE_STATE/.rules-before.XXXXXX") || return 1
     test=$(mktemp "$SECURE_STATE/.rules-test.XXXXXX") || return 1
     trap "rm -f -- $(printf '%q' "$next") $(printf '%q' "$previous") $(printf '%q' "$test")" EXIT
-    secure_jq -e '(.rules|type)=="object" and (.rules.mode=="default" or (.rules.mode=="custom" and (.rules.ini|type)=="string" and (.rules.ini|length)<=262144))' "$request" >/dev/null || return 1
-    secure_jq '.rules' "$request" | secure_store_stream "$next" || return 1
+    secure_jq -e '(.rules|type)=="object" and (.rules.ini|type)=="string" and (.rules.ini|length)<=262144 and
+      (if .rules.mode=="url" then (.rules|keys)==["ini","mode","url"] and
+        (.rules.url|type)=="string" and (.rules.url|length)>0 and (.rules.url|length)<=2048
+       else (.rules|keys)==["ini","mode"] and (.rules.mode=="default" or .rules.mode=="custom") end)' "$request" >/dev/null || return 1
+    secure_jq --argjson at "$(date +%s)" '.rules | if .mode=="url" then .updated_at=$at else . end' "$request" | secure_store_stream "$next" || return 1
     input="$SECURE_STATE/$(cat "$SECURE_STATE/current")/p09"
     secure_rules_apply "$input" "$test" "$next" || return 1
     local existed=0

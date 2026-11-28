@@ -19,7 +19,9 @@ foreach (var line in decoded.Split('\n', StringSplitOptions.RemoveEmptyEntries))
     var item = FmtHandler.ResolveConfig(line, out var error) ?? throw new Exception(error);
     original.Add(item);
 }
-if (original.Count != 5) throw new Exception("Mixed Base64 import did not preserve five profiles");
+var notices = original.Where(n => n.Remarks.StartsWith("[NOTICE]") || n.Remarks.StartsWith("[提醒]")).ToList();
+if (notices.Count is not (0 or 2) || original.Count != 5 + notices.Count)
+    throw new Exception("Mixed Base64 import did not preserve profiles and bilingual notices");
 var importConfig = new Config { CoreBasicItem = new CoreBasicItem(), HysteriaItem = new HysteriaItem() };
 foreach (var node in original)
 {
@@ -30,6 +32,14 @@ foreach (var node in original)
 var exported = InnerFmt.ToUri(original)!;
 var imported = InnerFmt.Resolve(exported, "fixture-reimport")!;
 Directory.CreateDirectory(args[1]);
+foreach (var notice in notices)
+{
+    var node = imported.Single(n => n.Remarks == notice.Remarks);
+    if (node.Address != notice.Address || !node.Address.EndsWith(".invalid") || node.Port != 1 ||
+        node.ConfigType != EConfigType.VLESS || node.GetAllowInsecure())
+        throw new Exception("Informational node changed during export/reimport");
+}
+if (notices.Count == 2) Console.WriteLine("PASS: English and Chinese notices imported and retained with synthetic addresses");
 foreach (var node in imported)
 {
     if (node.ConfigType is not (EConfigType.TUIC or EConfigType.Hysteria2)) continue;

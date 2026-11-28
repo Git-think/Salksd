@@ -92,6 +92,19 @@ secure_jq -e '.outbounds[]|select(.type=="tuic")|.server_port==45999' "$SECURE_S
 mv "$SECURE_STATE/private.key" "$SECURE_STATE/private.key.test"
 if secure_prepare_certificate 2>/dev/null; then echo 'ERROR: silently replaced identity'; exit 1; fi
 mv "$SECURE_STATE/private.key.test" "$SECURE_STATE/private.key"
+# Persist a default URL and publish its validated snapshot without any network fetch.
+secure_jq '.content.p09|fromjson|.proxies' "$FILE_PATH/.salksd-data/bundle.json" > "$TEST_ROOT/proxies-before.json"
+printf '[custom]\ncustom_proxy_group=Custom`select`.*\nruleset=DIRECT,[]GEOIP,CN\nruleset=Custom,[]FINAL\n' > "$TEST_ROOT/fixture.ini"
+secure_jq -n --rawfile ini "$TEST_ROOT/fixture.ini" '{rules:{mode:"url",url:"https://rules.fixture.test/default.ini",ini:$ini}}' > "$TEST_ROOT/rules-task.json"
+secure_rules_change "$TEST_ROOT/rules-task.json"
+secure_jq -e '.mode=="url" and .url=="https://rules.fixture.test/default.ini" and .updated_at>0' "$SECURE_STATE/rules-settings.json" >/dev/null
+secure_jq -e --slurpfile before "$TEST_ROOT/proxies-before.json" '.rules.mode=="url" and .rules.url=="https://rules.fixture.test/default.ini" and
+  (.content.p09|fromjson|.proxies)==$before[0] and (.content.p09|fromjson|.rules)==["GEOIP,CN,DIRECT","MATCH,Custom"]' "$FILE_PATH/.salksd-data/bundle.json" >/dev/null
+if grep -q 'rules.fixture.test\|custom_proxy_group' "$SECURE_STATE/rules-settings.json" "$FILE_PATH/.salksd-data/bundle.json"; then exit 1; fi
+secure_jq -n '{rules:{mode:"default",ini:""}}' > "$TEST_ROOT/rules-task.json"
+secure_rules_change "$TEST_ROOT/rules-task.json"
+secure_jq -e '.rules.mode=="default" and (.content.p09|fromjson|.rules|length)==13' "$FILE_PATH/.salksd-data/bundle.json" >/dev/null
+echo 'PASS: default URL persists with encoded snapshot, publishes to panel and keeps TLS nodes; builtin reset restores rules'
 # Keep the generated fixture for client-core tests when a path was explicitly supplied.
 printf 'PASS: certificate reuse, stable URLs, escaped payloads, strict and legacy feeds, fail-closed identity\n'
 printf 'Fixture: %s\n' "$TEST_ROOT"

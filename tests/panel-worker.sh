@@ -77,3 +77,12 @@ secure_seal "$data/request.json"
 secure_panel_poll
 secure_jq -e '.status=="success" and .action=="rules-save"' "$data/result.json" >/dev/null
 echo 'PASS: encoded template task reaches only the fixed local compiler action'
+secure_jq -n --argjson now "$(date +%s)" '{action:"rules-save",id:("a"*32),created_at:$now,rules:{mode:"url",url:"https://rules.fixture.test/default.ini",ini:"[custom]"}}' > "$data/request.json"
+secure_seal "$data/request.json"
+secure_panel_poll
+secure_jq -e '.status=="success" and .action=="rules-save"' "$data/result.json" >/dev/null
+for rules in '{mode:"url",ini:"[custom]"}' '{mode:"url",url:"",ini:"[custom]"}' '{mode:"url",url:"https://example.com/a",ini:"[custom]",path:"/tmp"}'; do
+    secure_jq -n --argjson now "$(date +%s)" '{action:"rules-save",id:("a"*32),created_at:$now,rules:'"$rules"'}' > "$data/request.json"
+    if secure_panel_poll; then echo 'ERROR: accepted invalid URL template task'; exit 1; fi
+done
+echo 'PASS: URL template tasks accepted with exact fields; missing/empty URL and unlisted fields rejected'

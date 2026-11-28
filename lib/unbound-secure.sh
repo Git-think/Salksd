@@ -353,15 +353,16 @@ secure_install_http() {
     # requires a readable PHP entrypoint. Keep its code separate from client secrets.
     # The data directory is 700, its bundle is 600 and HTTP access is denied.
     secure_panel_init || return 1
-    local generation file bundle token_hash
+    local generation file bundle token_hash rules='{"mode":"default"}'
+    if [[ -f "$SECURE_STATE/rules-settings.json" ]]; then rules=$(secure_read "$SECURE_STATE/rules-settings.json") || return 1; fi
     generation=$(cat "$SECURE_STATE/current") || return 1
     [[ "$generation" =~ ^subscriptions-[0-9]+-[0-9]+-[0-9]+$ ]] || return 1
     token_hash=$(printf '%s' "$SECURE_TOKEN" | openssl dgst -sha256 -r | awk '{print $1}')
     bundle=$(mktemp "$SECURE_STATE/.http.XXXXXX") || return 1
     secure_jq -nc --rawfile b "$SECURE_STATE/$generation/p07" --rawfile s "$SECURE_STATE/$generation/p08" \
-      --rawfile c "$SECURE_STATE/$generation/p09" --arg hash "$token_hash" --slurpfile shares "$SECURE_STATE/$generation/shares.json" \
+      --rawfile c "$SECURE_STATE/$generation/p09" --arg hash "$token_hash" --argjson rules "$rules" --slurpfile shares "$SECURE_STATE/$generation/shares.json" \
       --slurpfile index "$SECURE_STATE/$generation/share-index.json" --slurpfile server "$SECURE_STATE/server.json" \
-      '{token_hash:$hash,shares:$shares[0],share_index:$index[0],ports:($server[0].inbounds|map({key:.type,value:.listen_port})|from_entries),content:{p07:$b,p08:$s,p09:$c}}' | secure_store_stream "$bundle" || return 1
+      '{token_hash:$hash,rules:$rules,shares:$shares[0],share_index:$index[0],ports:($server[0].inbounds|map({key:.type,value:.listen_port})|from_entries),content:{p07:$b,p08:$s,p09:$c}}' | secure_store_stream "$bundle" || return 1
     local handler="$SECURE_STATE/secure-sub.php.new" data_dir="$FILE_PATH/.salksd-data"
     {
       secure_php_runtime_source | sed '1d'
@@ -500,8 +501,10 @@ secure_panel_poll() {
           (.revision|test("^[0-9a-f]{64}$"))
         elif .action=="rules-save" then
           keys==["action","created_at","id","rules"] and
-          (.rules|type)=="object" and (.rules|keys)==["ini","mode"] and
-          (.rules.mode=="default" or .rules.mode=="custom") and (.rules.ini|type)=="string" and (.rules.ini|length)<=262144
+          (.rules|type)=="object" and (.rules.ini|type)=="string" and (.rules.ini|length)<=262144 and
+          (if .rules.mode=="url" then (.rules|keys)==["ini","mode","url"] and
+             (.rules.url|type)=="string" and (.rules.url|length)>0 and (.rules.url|length)<=2048
+           else (.rules|keys)==["ini","mode"] and (.rules.mode=="default" or .rules.mode=="custom") end)
         else false end) and
         (.id|type)=="string" and (.id|test("^[0-9a-f]{32}$")) and
         (.created_at|type)=="number" and (.created_at|floor)==.created_at' "$data_dir/running.json" >/dev/null 2>&1; then

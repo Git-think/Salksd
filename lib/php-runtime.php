@@ -85,6 +85,150 @@ function acl_fetch(string $url): string {
     throw new RuntimeException('模板重定向过多。');
 }
 
+function acl_saved_ini(array $settings): string {
+    $mode=$settings['mode'] ?? 'default';
+    if ($mode==='default') { return acl_default(); }
+    if (!in_array($mode,['custom','url'],true) || !is_string($settings['ini'] ?? null)) {
+        throw new RuntimeException('默认模板设置无效。');
+    }
+    if ($mode==='url') { acl_url($settings['url'] ?? ''); }
+    return $settings['ini'];
+}
+
+function acl_cached_compile(string $directory, string $url, array $base): array {
+    acl_url($url);
+    if (!is_dir($directory) && !mkdir($directory,0700)) { throw new RuntimeException('模板缓存不可用。'); }
+    $cache=$directory.'/'.hash('sha256',$url);
+    foreach (glob($directory.'/*') ?: [] as $old) {
+        if (!is_link($old) && is_file($old) && preg_match('/^[a-f0-9]{64}$/D',basename($old)) && filemtime($old)<time()-3600) { unlink($old); }
+    }
+    if (!is_file($cache) && count(glob($directory.'/*') ?: [])>=32) { throw new RuntimeException('模板缓存已满，请稍后重试。'); }
+    if (is_file($cache) && filemtime($cache)>time()-3600) {
+        return acl_compile(stored_decode(file_get_contents($cache)),$base);
+    }
+    $ini=acl_fetch($url);
+    $result=acl_compile($ini,$base);
+    $temp=tempnam($directory,'.cache-');
+    if ($temp===false) { throw new RuntimeException('模板缓存不可用。'); }
+    try {
+        $bytes=stored_encode($ini);
+        if (file_put_contents($temp,$bytes)!==strlen($bytes) || !rename($temp,$cache)) { throw new RuntimeException('模板缓存不可用。'); }
+    } finally { if (is_file($temp)) { unlink($temp); } }
+    return $result;
+}
+
+function acl_live_state(array $settings, string $path): array {
+    $revision=hash('sha256',json_encode($settings));
+    $state=['revision'=>$revision,'ini'=>acl_saved_ini($settings),'updated_at'=>(int)($settings['updated_at'] ?? 0),
+        'checked_at'=>(int)($settings['updated_at'] ?? 0),'status'=>'ok','failed_at'=>0,'retry_at'=>0,'error'=>''];
+    if (is_file($path)) {
+        try {
+            $saved=json_decode(stored_decode(file_get_contents($path)),true,512,JSON_THROW_ON_ERROR);
+            if (is_array($saved) && ($saved['revision'] ?? '')===$revision && is_string($saved['ini'] ?? null) &&
+                strlen($saved['ini'])<=262144 && in_array($saved['status'] ?? '',['ok','stale'],true) &&
+                is_int($saved['updated_at'] ?? null) && is_int($saved['checked_at'] ?? null) &&
+                is_int($saved['failed_at'] ?? null) && is_int($saved['retry_at'] ?? null) && is_string($saved['error'] ?? null)) { $state=$saved; }
+        } catch (Throwable $e) { /* The verified save remains available if runtime state is damaged. */ }
+    }
+    return $state;
+}
+
+function acl_status(array $settings, string $path): ?array {
+    if (($settings['mode'] ?? '')!=='url') { return null; }
+    $state=acl_live_state($settings,$path);
+    unset($state['ini'],$state['revision']);
+    return $state;
+}
+
+function acl_store_state(string $path, array $state): void {
+    $temp=tempnam(dirname($path),'.rules-');
+    if ($temp===false) { throw new RuntimeException('模板状态无法保存。'); }
+    try {
+        $bytes=stored_encode(json_encode($state,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
+        if (file_put_contents($temp,$bytes)!==strlen($bytes) || !chmod($temp,0600) || !rename($temp,$path)) {
+            throw new RuntimeException('模板状态无法保存。');
+        }
+    } finally { if (is_file($temp)) { unlink($temp); } }
+}
+
+function acl_subscription(array $settings, array $base, string $directory, ?array &$status=null): array {
+    if (($settings['mode'] ?? '')!=='url') { return $base; }
+    $path=$directory.'/rules-state.json';
+    $state=acl_live_state($settings,$path);
+    $result=acl_compile($state['ini'],$base);
+    $status=array_diff_key($state,['ini'=>true,'revision'=>true]);
+    $now=time();
+    if (($state['status']==='ok' && $state['checked_at']>$now-3600) ||
+        ($state['status']==='stale' && $state['retry_at']>$now)) { return $result; }
+    // Refresh only on subscription requests. Concurrent clients use the current
+    // snapshot instead of downloading repeatedly or waiting behind one another.
+    $lock=@fopen($directory.'/rules-refresh.lock','c');
+    if ($lock===false || !flock($lock,LOCK_EX|LOCK_NB)) {
+        if (is_resource($lock)) { fclose($lock); }
+        return $result;
+    }
+    try {
+        $state=acl_live_state($settings,$path);
+        $result=acl_compile($state['ini'],$base);
+        if (($state['status']==='ok' && $state['checked_at']>$now-3600) ||
+            ($state['status']==='stale' && $state['retry_at']>$now)) {
+            $status=array_diff_key($state,['ini'=>true,'revision'=>true]); return $result;
+        }
+        try {
+            $ini=acl_fetch($settings['url']);
+            $fresh=acl_compile($ini,$base);
+        } catch (Throwable $e) {
+            $state['status']='stale';$state['failed_at']=$now;$state['checked_at']=$now;$state['retry_at']=$now+300;
+            $state['error']='链接下载或模板校验失败；继续使用最后一次成功验证的模板。';
+            acl_store_state($path,$state);
+            $status=array_diff_key($state,['ini'=>true,'revision'=>true]);
+            return $result;
+        }
+        $state=['revision'=>$state['revision'],'ini'=>$ini,'updated_at'=>$now,'checked_at'=>$now,
+            'status'=>'ok','failed_at'=>0,'retry_at'=>0,'error'=>''];
+        acl_store_state($path,$state);
+        $status=array_diff_key($state,['ini'=>true,'revision'=>true]);
+        return $fresh;
+    } finally { flock($lock,LOCK_UN);fclose($lock); }
+}
+
+function subscription_notices(?array $rulesStatus): array {
+    // A single presentation path for current and future operator notices.
+    $notices=[];
+    if (($rulesStatus['status'] ?? '')==='stale') { $notices[]=['en'=>'Rules update failed - using saved rules','zh'=>'规则更新失败，正在使用已保存规则']; }
+    return $notices;
+}
+
+function subscription_notice(string $response, string $format, array $notices): string {
+    if (!$notices) { return $response; }
+    $labels=['[NOTICE] '.implode(' | ',array_column($notices,'en')),'[提醒] '.implode('；',array_column($notices,'zh'))];
+    $uuid='00000000-0000-4000-8000-000000000000';
+    // Reserved .invalid destination and synthetic identity: this is informational,
+    // never a route to the operator's service. Append after the normal first node.
+    if ($format==='p07') {
+        $plain=base64_decode($response,true);
+        if ($plain===false) { throw new RuntimeException('订阅内容无效。'); }
+        $plain=rtrim($plain,"\r\n")."\n";
+        foreach ($labels as $i=>$label) { $host=$i===0?'notice-en.invalid':'notice-zh.invalid'; $plain.='vless://'.$uuid.'@'.$host.':1?encryption=none&security=tls&sni='.$host.'&type=tcp&allowInsecure=0#'.rawurlencode($label)."\n"; }
+        return base64_encode($plain);
+    }
+    $value=json_decode($response,true,512,JSON_THROW_ON_ERROR);
+    if ($format==='p08') {
+        foreach ($labels as $i=>$label) { $host=$i===0?'notice-en.invalid':'notice-zh.invalid'; $value['outbounds'][]=['type'=>'vless','tag'=>$label,'server'=>$host,'server_port'=>1,'uuid'=>$uuid,
+            'tls'=>['enabled'=>true,'server_name'=>$host,'insecure'=>false]]; }
+    } elseif ($format==='p09') {
+        foreach ($labels as $i=>$label) { $host=$i===0?'notice-en.invalid':'notice-zh.invalid'; $value['proxies'][]=['name'=>$label,'type'=>'vless','server'=>$host,'port'=>1,'uuid'=>$uuid,
+            'tls'=>true,'servername'=>$host,'skip-cert-verify'=>false]; }
+        // Compile rules before adding this node. It cannot enter any wildcard
+        // selector, url-test, fallback, load-balance or existing routing group.
+        $group='[NOTICE] Messages';
+        $names=array_merge(array_column($value['proxy-groups'] ?? [],'name'),array_column($value['proxies'],'name'));
+        while (in_array($group,$names,true)) { $group.='.'; }
+        $value['proxy-groups'][]=['name'=>$group,'type'=>'select','proxies'=>$labels];
+    }
+    return json_encode($value,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);
+}
+
 function acl_compile(string $ini, array $base): array {
     if (strlen($ini)>262144 || str_contains($ini,"\0")) { throw new RuntimeException('模板大小或内容无效。'); }
     $groups=[]; $sets=[]; $section=''; $nodes=array_column($base['proxies'] ?? [],'name');
